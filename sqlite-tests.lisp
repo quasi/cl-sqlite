@@ -121,18 +121,21 @@
     (delete-file *db-file*))
   (ensure-table)
   (unwind-protect
-       (do-zillions 10 10000)
+       (do-zillions 10 60000)
     (when (probe-file *db-file*)
     (delete-file *db-file*))))
 
 #+thread-support
 (defun do-insert (n timeout)
   "Insert a nonsense value into foo"
-  (ignore-errors
-    (with-open-database (db *db-file* :busy-timeout timeout)
-      (iter (repeat 10000)
-            (execute-non-query db "INSERT INTO FOO (v) VALUES (?)" n)))
-    t))
+  (handler-case
+      (with-open-database (db *db-file* :busy-timeout timeout)
+        (iter (repeat 10000)
+              (execute-non-query db "INSERT INTO FOO (v) VALUES (?)" n))
+        t)
+    (error (c)
+      (format t "~&Thread ~A error: ~A~%" n c)
+      nil)))
 
 #+thread-support
 (defun do-zillions (max-n timeout)
