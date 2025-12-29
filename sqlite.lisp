@@ -7,11 +7,13 @@
            :sqlite-error-message
            :sqlite-error-sql
            :sqlite-handle
+           :handle
            :connect
            :set-busy-timeout
            :disconnect
            :sqlite-statement
            :prepare-statement
+           :with-prepared-statement
            :finalize-statement
            :step-statement
            :reset-statement
