@@ -1,5 +1,7 @@
 (in-package :sqlite-tests)
 
+(in-suite sqlite-suite)
+
 (test test-simple-create-table
   (with-open-database (db ":memory:")
     (create-table db :users
