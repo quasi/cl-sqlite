@@ -134,7 +134,7 @@
   (db p-sqlite3)
   (file :string)
   (proc :string)
-  (errmsg (:pointer :string)))
+  (errmsg :pointer))
 
 (defcfun sqlite3-free :void
   (ptr :pointer))

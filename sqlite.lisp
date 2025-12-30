@@ -143,7 +143,7 @@
    Note: Extension loading must be enabled first using ENABLE-LOAD-EXTENSION."
   (cffi:with-foreign-object (errmsg-ptr :pointer)
     (setf (cffi:mem-ref errmsg-ptr :pointer) (cffi:null-pointer))
-    (let ((res (sqlite-ffi:sqlite3-load-extension (handle db) path (or entry-point (cffi:null-pointer)) errmsg-ptr)))
+    (let ((res (sqlite-ffi:sqlite3-load-extension (handle db) path entry-point errmsg-ptr)))
       (unless (eq res :ok)
         (let ((msg (cffi:mem-ref errmsg-ptr :string)))
           (when (and msg (not (cffi:null-pointer-p (cffi:mem-ref errmsg-ptr :pointer))))
