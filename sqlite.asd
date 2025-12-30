@@ -11,7 +11,8 @@
 
   :components ((:file "sqlite-ffi")
                (:file "cache")
-               (:file "sqlite" :depends-on ("sqlite-ffi" "cache")))
+               (:file "sqlite" :depends-on ("sqlite-ffi" "cache"))
+               (:file "simple" :depends-on ("sqlite")))
 
   :depends-on (:iterate :cffi)
 

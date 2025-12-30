@@ -10,6 +10,7 @@
   :license "Public Domain"
 
   :components ((:file "sqlite-tests")
-               (:file "sqlite-tests-new"))
+               (:file "sqlite-tests-new")
+               (:file "simple-tests"))
 
   :depends-on (:fiveam :sqlite :bordeaux-threads))
