@@ -32,7 +32,11 @@
            :execute-one-row-m-v
            :last-insert-rowid
            :with-transaction
-           :with-open-database))
+           :with-open-database
+           :enable-load-extension
+           :load-extension
+           :float-vector-to-blob
+           :blob-to-float-vector))
 
 (in-package :sqlite)
 
@@ -125,6 +129,50 @@
     (unless (eq error-code :ok)
       (sqlite-error error-code "Could not close sqlite3 database." :db-handle handle))
     (slot-makunbound handle 'handle)))
+
+(defun enable-load-extension (db &optional (onoff t))
+  "Enable or disable the loading of extensions.
+   ONOFF: T to enable, NIL to disable."
+  (let ((res (sqlite-ffi:sqlite3-enable-load-extension (handle db) (if onoff 1 0))))
+    (unless (eq res :ok)
+       (sqlite-error res "Could not enable/disable extension loading" :db-handle db))))
+
+(defun load-extension (db path &optional entry-point)
+  "Load an extension from the shared library at PATH.
+   ENTRY-POINT: Optional name of the entry point function.
+   Note: Extension loading must be enabled first using ENABLE-LOAD-EXTENSION."
+  (cffi:with-foreign-object (errmsg-ptr :pointer)
+    (setf (cffi:mem-ref errmsg-ptr :pointer) (cffi:null-pointer))
+    (let ((res (sqlite-ffi:sqlite3-load-extension (handle db) path entry-point errmsg-ptr)))
+      (unless (eq res :ok)
+        (let ((msg (cffi:mem-ref errmsg-ptr :string)))
+          (when (and msg (not (cffi:null-pointer-p (cffi:mem-ref errmsg-ptr :pointer))))
+            (sqlite-ffi:sqlite3-free (cffi:mem-ref errmsg-ptr :pointer)))
+          (sqlite-error res (format nil "Could not load extension ~A: ~A" path msg) :db-handle db))))))
+
+(defun float-vector-to-blob (vector)
+  "Convert a simple-array of single-float to a byte vector (blob) suitable for sqlite-vec."
+  (declare (type (simple-array single-float (*)) vector))
+  (let* ((len (length vector))
+         (byte-len (* len 4))
+         (blob (make-array byte-len :element-type '(unsigned-byte 8))))
+    (cffi:with-pointer-to-vector-data (ptr blob)
+      (loop for i from 0 below len
+            do (setf (cffi:mem-aref ptr :float i) (aref vector i))))
+    blob))
+
+(defun blob-to-float-vector (blob)
+  "Convert a byte vector (blob) from sqlite-vec to a simple-array of single-float."
+  (declare (type (vector (unsigned-byte 8)) blob))
+  (let* ((byte-len (length blob))
+         (len (/ byte-len 4)))
+    (unless (zerop (mod byte-len 4))
+      (error "Blob length ~A is not a multiple of 4" byte-len))
+    (let ((vector (make-array len :element-type 'single-float)))
+      (cffi:with-pointer-to-vector-data (ptr blob)
+        (loop for i from 0 below len
+              do (setf (aref vector i) (cffi:mem-aref ptr :float i))))
+      vector)))
 
 (defclass sqlite-statement ()
   ((db :reader db :initarg :db)

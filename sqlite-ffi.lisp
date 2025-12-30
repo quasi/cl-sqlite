@@ -68,7 +68,10 @@
            :sqlite3-value-numeric-type
            :p-sqlite3-value
            :p-sqlite3-context
-           :exec-callback))
+           :exec-callback
+           :sqlite3-enable-load-extension
+           :sqlite3-load-extension
+           :sqlite3-free))
 
 (in-package :sqlite-ffi)
 
@@ -122,6 +125,19 @@
 
 (defcfun sqlite3-close error-code
   (db p-sqlite3))
+
+(defcfun sqlite3-enable-load-extension error-code
+  (db p-sqlite3)
+  (onoff :int))
+
+(defcfun sqlite3-load-extension error-code
+  (db p-sqlite3)
+  (file :string)
+  (proc :string)
+  (errmsg :pointer))
+
+(defcfun sqlite3-free :void
+  (ptr :pointer))
 
 (defcfun sqlite3-errmsg :string
   (db p-sqlite3))
