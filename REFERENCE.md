@@ -45,7 +45,65 @@ Sets the maximum amount of time (in milliseconds) the library will wait for a lo
 
 ---
 
-### Query Execution (High-Level)
+### Simplified Interface
+
+The `sqlite` package exports a set of simplified functions that abstract away SQL generation. These functions accept table names, column lists, and s-expressions for WHERE clauses.
+
+#### `create-table`
+**Syntax:** `(create-table db name columns &key if-not-exists)`
+**Returns:** `nil`
+
+Creates a new table.
+- `db`: The database connection.
+- `name`: The name of the table (string or symbol).
+- `columns`: A list of column definitions. Each definition is a list: `(name type &rest options)`.
+  - `options` can be `:primary-key`, `:autoincrement`, `:not-null`, `:unique`, or any other keyword which will be included as is.
+- `if-not-exists`: If true, adds `IF NOT EXISTS` to the SQL.
+
+#### `drop-table`
+**Syntax:** `(drop-table db name &key if-exists)`
+**Returns:** `nil`
+
+Drops a table.
+- `if-exists`: If true, adds `IF EXISTS` to the SQL.
+
+#### `insert`
+**Syntax:** `(insert db table data)`
+**Returns:** `nil`
+
+Inserts a row into the table.
+- `data`: A plist of column names and values (e.g., `'(:name "Alice" :age 30)`).
+
+#### `select`
+**Syntax:** `(select db table &key columns where order-by limit offset)`
+**Returns:** `list of lists`
+
+Selects rows from the table.
+- `columns`: A list of column names (symbols/keywords) to select. Defaults to `'(*)`.
+- `where`: An s-expression representing the WHERE clause.
+  - Supported operators: `:and`, `:or`, `:not`, `:=`, `:<`, `:>`, `:<=`, `:>=`, `:<>`, `:like`, `:in`, `:is-null`, `:is-not-null`.
+  - Example: `'(:and (:> :age 18) (:= :active 1))`
+- `order-by`: A column name (symbol/keyword) or a list of `(:column :direction)` pairs. Direction can be `:asc` or `:desc`.
+  - Example: `:name` or `'((:age :desc) (:name :asc))`
+- `limit`: Integer limit for the number of rows.
+- `offset`: Integer offset.
+
+#### `update-table`
+**Syntax:** `(update-table db table data &key where)`
+**Returns:** `nil`
+
+Updates rows in the table.
+- `data`: A plist of columns to update and their new values.
+- `where`: S-expression for the WHERE clause.
+
+#### `delete-from`
+**Syntax:** `(delete-from db table &key where)`
+**Returns:** `nil`
+
+Deletes rows from the table.
+- `where`: S-expression for the WHERE clause.
+
+### Query Execution (Standard API)
 
 These functions allow executing SQL queries without manually managing prepared statement objects. They handle preparation, binding, execution, and finalization (returning to cache).
 

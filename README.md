@@ -30,7 +30,47 @@ You need `sqlite3` installed on your system.
 
 ## Getting Started
 
-Here is a quick example to get you up and running:
+### Quick Start (Simplified Interface)
+
+For many applications, the simplified interface provides a convenient, "Lispy" way to interact with the database without writing raw SQL.
+
+```lisp
+(use-package :sqlite)
+
+(defvar *db* (connect ":memory:"))
+
+;; Create a table
+;; The schema is defined as a list of column definitions: (name type &rest options)
+(create-table *db* :users '((:id :integer :primary-key :autoincrement)
+                            (:name :text)
+                            (:age :integer)))
+
+;; Insert data
+(insert *db* :users '(:name "Alice" :age 30))
+(insert *db* :users '(:name "Bob" :age 25))
+
+;; Select data
+(select *db* :users)
+;; => ((1 "Alice" 30) (2 "Bob" 25))
+
+;; Select with WHERE clause (s-expression)
+(select *db* :users :where '(:> :age 28))
+;; => ((1 "Alice" 30))
+
+;; Select with ORDER BY
+(select *db* :users :order-by '(:age :desc))
+;; => ((1 "Alice" 30) (2 "Bob" 25))
+
+;; Update data
+(update-table *db* :users '(:age 31) :where '(:= :name "Alice"))
+
+;; Disconnect
+(disconnect *db*)
+```
+
+### Getting Started (Standard API)
+
+If you prefer more control or need to execute raw SQL, use the standard API.
 
 ```lisp
 (use-package :sqlite)
