@@ -1,6 +1,6 @@
 (in-package :sqlite)
 
-(export '(create-table drop-table insert select update-table delete-from))
+(export '(create-table drop-table insert select update-table delete-from normalize-name))
 
 (defun normalize-type (type)
   (string-upcase (string type)))
