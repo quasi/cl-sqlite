@@ -1,0 +1,52 @@
+---
+feature_name: iterate-integration
+feature_status: stable
+confidence: 0.90
+
+metadata:
+  category: extension
+  priority: medium
+  dependencies:
+    - connection-management
+    - prepared-statements
+  related_features:
+    - query-execution
+
+triangulation:
+  pass0_docs: found
+  pass1_structure: found
+  pass2_contracts: found
+  pass3_behaviors: found
+  pass4_properties: found
+  pass5_rationale: found
+  convergence: convergent
+
+quality_metrics:
+  test_coverage: high
+  scenarios_tested: 2
+  contracts_documented: 3
+  properties_verified: 1
+  documentation_quality: 90
+
+artifacts:
+  contracts:
+    - contracts/in-sqlite-query.md
+    - contracts/iterate-bindings.md
+    - contracts/iterate-patterns.md
+  scenarios:
+    - scenarios/iterate-basic-streaming.md
+    - scenarios/iterate-large-dataset.md
+  properties:
+    - properties/lazy-evaluation-streaming.md
+
+source_locations:
+  code:
+    - sqlite.lisp (513-557: iterate drivers)
+  tests:
+    - sqlite-tests.lisp (iterate examples)
+  documentation:
+    - README.md (iterate examples)
+
+cross_references:
+  patterns:
+    - PATTERN-006 (Iterate Integration)

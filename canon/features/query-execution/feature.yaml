@@ -1,0 +1,76 @@
+---
+feature_name: query-execution
+feature_status: stable
+confidence: 0.95
+
+metadata:
+  category: core
+  priority: critical
+  dependencies:
+    - connection-management
+    - prepared-statements
+  related_features:
+    - simplified-interface
+    - transactions
+
+triangulation:
+  pass0_docs: found
+  pass1_structure: found
+  pass2_contracts: found
+  pass3_behaviors: found
+  pass4_properties: found
+  pass5_rationale: found
+  convergence: convergent
+
+quality_metrics:
+  test_coverage: high
+  scenarios_tested: 5
+  contracts_documented: 5
+  properties_verified: 5
+  documentation_quality: 100
+
+artifacts:
+  vocabulary: ../connection-management/vocabulary.md
+  contracts:
+    - contracts/execute-non-query.md
+    - contracts/execute-single.md
+    - contracts/execute-to-list.md
+    - contracts/execute-one-row-m-v.md
+    - contracts/last-insert-rowid.md
+  scenarios:
+    - scenarios/basic-query-execution.md
+    - scenarios/parameterized-query.md
+    - scenarios/multi-row-query.md
+    - scenarios/empty-result-handling.md
+    - scenarios/last-insert-rowid-retrieval.md
+  properties:
+    - properties/parameter-binding-safety.md
+    - properties/result-type-consistency.md
+    - properties/single-statement-requirement.md
+    - properties/row-iteration-semantics.md
+    - properties/column-index-base.md
+
+source_locations:
+  code:
+    - sqlite.lisp:180-246 (execute-* functions)
+    - sqlite.lisp:271-280 (last-insert-rowid)
+  tests:
+    - sqlite-tests.lisp:40-90
+  documentation:
+    - README.md:113-156
+    - REFERENCE.md:46-81
+    - CL-SQLITE.agent.md:878-886
+
+cross_references:
+  invariants:
+    - INV-003 (Parameter Binding Safety)
+  rules:
+    - RULE-001 (Single Statement Requirement)
+    - RULE-003 (Bind Before Step)
+    - RULE-004 (Parameter Index Base)
+    - RULE-005 (Column Index Base)
+  patterns:
+    - PATTERN-001 (Simple CRUD Operations)
+    - PATTERN-002 (Parameterized Queries)
+  decisions:
+    - DEC-002 (Simplified API)

@@ -1,0 +1,301 @@
+survey:
+  completed: 2026-01-20T00:00:00Z
+  sources_examined:
+    - path: README.md
+      type: overview
+      last_modified: 2026-01
+      staleness: low
+      notes: "Recently updated (2.0 fork, Jan 2026)"
+
+    - path: REFERENCE.md
+      type: api_reference
+      coverage: comprehensive
+      staleness: low
+      notes: "Complete API documentation for both high-level and low-level interfaces"
+
+    - path: CL-SQLITE.agent.md
+      type: agent_specification
+      coverage: comprehensive
+      staleness: very_low
+      notes: "Agent-optimized specification with rules, patterns, and anti-patterns"
+
+claims:
+  vocabulary:
+    - term: "connection"
+      source: CL-SQLITE.agent.md:23
+      definition: "sqlite-handle instance representing active database session"
+      confidence: high
+      verified_in_code: pending
+
+    - term: "statement"
+      source: CL-SQLITE.agent.md:24
+      definition: "sqlite-statement instance representing prepared SQL"
+      confidence: high
+      verified_in_code: pending
+
+    - term: "parameter"
+      source: CL-SQLITE.agent.md:25
+      definition: "Placeholder in SQL (? for positional, :name/@name/$name for named)"
+      confidence: high
+      verified_in_code: pending
+
+    - term: "binding"
+      source: CL-SQLITE.agent.md:26
+      definition: "Association of parameter with value"
+      confidence: high
+      verified_in_code: pending
+
+    - term: "finalization"
+      source: CL-SQLITE.agent.md:27
+      definition: "Returning statement to cache (NOT destruction)"
+      confidence: high
+      verified_in_code: pending
+      notes: "Important: differs from typical resource cleanup"
+
+    - term: "stepping"
+      source: CL-SQLITE.agent.md:28
+      definition: "Advancing to next row in result set"
+      confidence: high
+      verified_in_code: pending
+
+    - term: "transaction"
+      source: CL-SQLITE.agent.md:29
+      definition: "Atomic BEGIN...COMMIT/ROLLBACK sequence"
+      confidence: high
+      verified_in_code: pending
+
+    - term: "simple-api"
+      source: CL-SQLITE.agent.md:30
+      definition: "High-level functions (insert, select, update-table, delete-from)"
+      confidence: high
+      verified_in_code: pending
+
+    - term: "standard-api"
+      source: CL-SQLITE.agent.md:31
+      definition: "Mid-level functions (execute-to-list, execute-single, etc.)"
+      confidence: high
+      verified_in_code: pending
+
+    - term: "prepared-api"
+      source: CL-SQLITE.agent.md:32
+      definition: "Low-level statement management (prepare-statement, step-statement, etc.)"
+      confidence: high
+      verified_in_code: pending
+
+    - term: "vec-api"
+      source: CL-SQLITE.agent.md:33
+      definition: "Vector search extension functions (requires sqlite-vec)"
+      confidence: high
+      verified_in_code: pending
+
+  features:
+    - name: "Connection Management"
+      sources:
+        - README.md:236
+        - REFERENCE.md:9
+        - CL-SQLITE.agent.md:870
+      confidence: high
+      functions_claimed:
+        - connect
+        - disconnect
+        - with-open-database
+        - set-busy-timeout
+
+    - name: "Query Execution (Standard API)"
+      sources:
+        - README.md:242
+        - REFERENCE.md:106
+        - CL-SQLITE.agent.md:879
+      confidence: high
+      functions_claimed:
+        - execute-non-query
+        - execute-single
+        - execute-one-row-m-v
+        - execute-to-list
+        - last-insert-rowid
+        - "**/named variants"
+
+    - name: "Prepared Statements"
+      sources:
+        - README.md:256
+        - REFERENCE.md:181
+        - CL-SQLITE.agent.md:891
+      confidence: high
+      functions_claimed:
+        - prepare-statement
+        - bind-parameter
+        - step-statement
+        - reset-statement
+        - finalize-statement
+        - statement-column-value
+        - with-prepared-statement
+
+    - name: "Transactions"
+      sources:
+        - README.md:252
+        - REFERENCE.md:257
+        - CL-SQLITE.agent.md:930
+      confidence: high
+      functions_claimed:
+        - with-transaction
+
+    - name: "Simplified Interface"
+      sources:
+        - README.md:33
+        - REFERENCE.md:48
+        - CL-SQLITE.agent.md:904
+      confidence: high
+      notes: "Lispy abstraction layer without raw SQL"
+      functions_claimed:
+        - create-table
+        - drop-table
+        - insert
+        - select
+        - update-table
+        - delete-from
+
+    - name: "Iterate Integration"
+      sources:
+        - README.md:175
+        - REFERENCE.md:267
+      confidence: high
+      functions_claimed:
+        - in-sqlite-query
+        - in-sqlite-query/named
+        - on-sqlite-statement
+
+    - name: "Error Handling"
+      sources:
+        - README.md:265
+        - REFERENCE.md:290
+        - CL-SQLITE.agent.md:942
+      confidence: high
+      conditions_claimed:
+        - sqlite-error
+        - sqlite-constraint-error
+
+    - name: "Vector Extension (sqlite-vec)"
+      sources:
+        - README.md:7 (git history shows recent addition)
+        - CL-SQLITE.agent.md:915
+      confidence: high
+      notes: "Added in recent commits (2025)"
+      functions_claimed:
+        - create-vector-table
+        - vector-search
+        - vec-distance-L2
+        - vec-distance-cosine
+        - vec-add
+        - vec-normalize
+        - float-vector-to-blob
+        - blob-to-float-vector
+
+    - name: "Extension Loading"
+      sources:
+        - CL-SQLITE.agent.md:934
+      confidence: high
+      functions_claimed:
+        - enable-load-extension
+        - load-extension
+
+  architecture:
+    - claim: "Three-layer API architecture: Simple → Standard → Prepared → FFI"
+      source: CL-SQLITE.agent.md:36-49
+      confidence: high
+      verification_needed: true
+      notes: "Layered abstraction with each layer building on the previous"
+
+    - claim: "Statement caching by SQL text for performance"
+      source: CL-SQLITE.agent.md:207-212
+      confidence: high
+      verification_needed: true
+      notes: "prepare-statement returns cached statement on repeated SQL"
+
+    - claim: "Statement lifecycle: prepare → bind → step → finalize (returns to cache)"
+      source: CL-SQLITE.agent.md:66-87
+      confidence: high
+      verification_needed: true
+
+    - claim: "Type mapping between Lisp and SQLite (5 storage classes)"
+      source: CL-SQLITE.agent.md:177-196
+      confidence: high
+      verification_needed: true
+
+  rules:
+    - id: RULE-001
+      name: "Single Statement Requirement"
+      source: CL-SQLITE.agent.md:91-102
+      description: "SQL string passed to prepare-statement MUST contain exactly one SQL statement"
+      confidence: high
+
+    - id: RULE-002
+      name: "Connection Before Operations"
+      source: CL-SQLITE.agent.md:105-116
+      description: "All database operations MUST use valid, connected sqlite-handle"
+      confidence: high
+
+    - id: RULE-003
+      name: "Statement Finalization"
+      source: CL-SQLITE.agent.md:118-132
+      description: "Every prepare-statement MUST have corresponding finalize-statement"
+      confidence: high
+
+    - id: RULE-004
+      name: "Parameter Index Base"
+      source: CL-SQLITE.agent.md:134-146
+      description: "Parameter indices are 1-based. Column indices are 0-based"
+      confidence: high
+      notes: "Common source of errors - SQLite C API convention"
+
+    - id: RULE-005
+      name: "Transaction Nesting Prohibition"
+      source: CL-SQLITE.agent.md:148-160
+      description: "with-transaction MUST NOT be nested"
+      confidence: high
+
+    - id: RULE-006
+      name: "Extension Loading Sequence"
+      source: CL-SQLITE.agent.md:162-175
+      description: "enable-load-extension MUST be called before load-extension"
+      confidence: high
+
+    - id: RULE-007
+      name: "Type Mapping Determinism"
+      source: CL-SQLITE.agent.md:177-198
+      description: "Values MUST map to SQLite types per defined table"
+      confidence: high
+
+    - id: RULE-008
+      name: "Statement Caching Transparency"
+      source: CL-SQLITE.agent.md:200-213
+      description: "Agents MUST assume statements are cached; do not rely on identity"
+      confidence: high
+
+    - id: RULE-009
+      name: "Busy Timeout Configuration"
+      source: CL-SQLITE.agent.md:215-226
+      description: "busy-timeout SHOULD be set for concurrent access"
+      confidence: medium
+      severity: should
+
+    - id: RULE-010
+      name: "WHERE Clause Operator Validity"
+      source: CL-SQLITE.agent.md:228-242
+      description: "Simple API WHERE clauses MUST use operators from allowed set"
+      confidence: high
+
+  staleness_indicators: []
+
+  coverage_assessment:
+    overall: excellent
+    notes: |
+      Documentation is comprehensive and well-structured:
+      - README.md provides user-oriented getting started guide
+      - REFERENCE.md provides complete API reference
+      - CL-SQLITE.agent.md provides machine-readable specification with rules and patterns
+
+      Documentation appears current (2.0 fork from Jan 2026).
+      No obvious staleness detected.
+
+      The agent.md file is particularly valuable for triangulation as it explicitly
+      documents invariants, rules, patterns, and anti-patterns.

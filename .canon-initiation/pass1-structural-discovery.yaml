@@ -1,0 +1,364 @@
+pass1_structural_discovery:
+  completed: 2026-01-20T00:00:00Z
+
+  codebase_statistics:
+    total_source_files: 10
+    total_test_files: 3
+    total_lines_of_code: 1779
+    primary_language: common-lisp
+    build_system: asdf
+    dependencies:
+      - cffi (Foreign Function Interface)
+      - iterate (Iteration library)
+
+  module_structure:
+    core_modules:
+      - name: sqlite-ffi
+        path: sqlite-ffi.lisp
+        role: "Low-level CFFI bindings to SQLite C API"
+        exports: "~40+ FFI functions"
+        confidence: high
+        convergence_status: convergent
+        notes: "Foundation layer - all higher layers depend on this"
+
+      - name: cache
+        path: cache.lisp
+        role: "Statement caching mechanism (MRU cache)"
+        exports: "Cache management functions"
+        confidence: high
+        convergence_status: convergent
+        notes: "Internal implementation of statement caching mentioned in docs"
+
+      - name: sqlite (core)
+        path: sqlite.lisp
+        role: "Core database operations: connections, prepared statements, standard API"
+        exports: "Connection management, prepared statements, execute-* functions"
+        confidence: high
+        convergence_status: convergent
+        depends_on:
+          - sqlite-ffi
+          - cache
+
+      - name: simple
+        path: simple.lisp
+        role: "Simplified Lispy API without raw SQL"
+        exports: "create-table, drop-table, insert, select, update-table, delete-from"
+        confidence: high
+        convergence_status: convergent
+        depends_on:
+          - sqlite
+        notes: "Higher-level abstraction mentioned in docs as 'Simplified Interface'"
+
+      - name: sqlite-vec
+        path: sqlite-vec.lisp
+        role: "Vector search extension interface (sqlite-vec)"
+        exports: "create-vector-table, vector-search, vec-* scalar functions"
+        confidence: high
+        convergence_status: convergent
+        depends_on:
+          - sqlite
+          - simple
+        notes: "Recent addition (2025 commits) - documented in agent.md"
+
+  features_identified:
+    # Features found in BOTH code AND docs
+    - name: "Connection Management"
+      location: sqlite.lisp
+      functions:
+        - connect (line ~106)
+        - disconnect (line ~121)
+        - with-open-database (exported but not in examined excerpt)
+        - set-busy-timeout (line ~117)
+      convergence_status: convergent
+      confidence: 0.95
+      notes: "Matches docs exactly"
+
+    - name: "Prepared Statements"
+      location: sqlite.lisp
+      functions:
+        - prepare-statement (exported)
+        - bind-parameter (exported)
+        - step-statement (exported)
+        - reset-statement (exported)
+        - finalize-statement (exported)
+        - statement-column-value (exported)
+        - with-prepared-statement (exported)
+        - clear-statement-bindings (exported)
+      convergence_status: convergent
+      confidence: 0.95
+      notes: "Complete API as documented"
+
+    - name: "Query Execution (Standard API)"
+      location: sqlite.lisp
+      functions:
+        - execute-non-query (exported)
+        - execute-single (exported)
+        - execute-single/named (exported)
+        - execute-one-row-m-v (exported)
+        - execute-one-row-m-v/named (exported)
+        - execute-to-list (exported)
+        - execute-to-list/named (exported)
+        - execute-non-query/named (exported)
+        - last-insert-rowid (exported)
+      convergence_status: convergent
+      confidence: 0.95
+      notes: "All documented functions present"
+
+    - name: "Simplified Interface"
+      location: simple.lisp
+      functions:
+        - create-table (line ~23)
+        - drop-table (line ~30)
+        - insert (line ~84)
+        - select (line ~93)
+        - update-table (exported, not in excerpt)
+        - delete-from (exported, not in excerpt)
+      helper_functions:
+        - normalize-name (line ~8)
+        - normalize-type (line ~5)
+        - build-column-def (line ~11)
+        - compile-where (line ~38) # WHERE clause s-expression compiler
+      convergence_status: convergent
+      confidence: 0.95
+      notes: "Matches docs, includes WHERE clause compiler for s-expressions"
+
+    - name: "Vector Extension (sqlite-vec)"
+      location: sqlite-vec.lisp
+      functions:
+        - create-vector-table (line ~15)
+        - vector-search (line ~41)
+        - vec-add (line ~77)
+        - vec-sub (line ~81)
+        - vec-distance-L2 (line ~85)
+        - vec-distance-cosine (line ~89)
+        - vec-distance-hamming (line ~93)
+        - vec-normalize (line ~97)
+        - vec-slice (exported, not in excerpt)
+        - vec-to-json (exported, not in excerpt)
+        - vec-length (exported, not in excerpt)
+      helper_functions:
+        - wrap-scalar-vec-func (line ~63) # Wrapper for scalar SQL functions
+      convergence_status: convergent
+      confidence: 0.90
+      notes: "Complete implementation matching agent.md specification"
+
+    - name: "Extension Loading"
+      location: sqlite.lisp
+      functions:
+        - enable-load-extension (line ~133)
+        - load-extension (line ~140)
+      convergence_status: convergent
+      confidence: 0.95
+      notes: "Required for sqlite-vec, properly implemented with error checking"
+
+    - name: "Error Handling"
+      location: sqlite.lisp
+      conditions:
+        - sqlite-error (line ~43)
+        - sqlite-constraint-error (line ~55)
+      error_function:
+        - sqlite-error (line ~58) # Error signaling function
+      convergence_status: convergent
+      confidence: 0.95
+      notes: "Condition hierarchy matches docs exactly"
+
+    - name: "Transactions"
+      location: sqlite.lisp
+      functions:
+        - with-transaction (exported, implementation not in excerpt)
+      convergence_status: convergent
+      confidence: 0.90
+      notes: "Documented but implementation not examined yet"
+
+    - name: "Iterate Integration"
+      location: sqlite.lisp (likely)
+      functions:
+        - in-sqlite-query (not yet found)
+        - in-sqlite-query/named (not yet found)
+        - on-sqlite-statement (not yet found)
+      convergence_status: pending_verification
+      confidence: 0.70
+      notes: "Documented but not yet located in code - needs further examination"
+
+  entity_types:
+    - name: sqlite-handle
+      location: sqlite.lisp:90
+      slots:
+        - handle (accessor: handle)
+        - database-path (accessor: database-path)
+        - cache (accessor: cache)
+        - statements (accessor: sqlite-handle-statements)
+      role: "Connection object encapsulating database handle and state"
+      convergence_status: convergent
+
+    - name: sqlite-statement
+      location: sqlite.lisp:14 (exported, definition not in excerpt)
+      role: "Prepared statement object"
+      convergence_status: convergent
+      notes: "Referenced in exports and documentation"
+
+    - name: sqlite-error
+      location: sqlite.lisp:43
+      slots:
+        - handle
+        - error-code
+        - error-msg
+        - statement
+        - sql
+      parent: simple-error
+      convergence_status: convergent
+
+    - name: sqlite-constraint-error
+      location: sqlite.lisp:55
+      parent: sqlite-error
+      convergence_status: convergent
+
+  architectural_patterns:
+    - pattern: "Layered API architecture"
+      evidence:
+        - "FFI layer (sqlite-ffi.lisp)"
+        - "Core layer (sqlite.lisp) uses FFI"
+        - "Simple layer (simple.lisp) uses Core"
+        - "Vec layer (sqlite-vec.lisp) uses Simple"
+      convergence_status: convergent
+      matches_docs: true
+      diagram_reference: CL-SQLITE.agent.md:36-49
+
+    - pattern: "Statement caching"
+      evidence:
+        - "cache.lisp provides MRU cache"
+        - "sqlite-handle has cache slot (line 93)"
+        - "initialize-instance creates cache (line 104)"
+      convergence_status: convergent
+      matches_docs: true
+      references:
+        - CL-SQLITE.agent.md:207-212
+        - CL-SQLITE.agent.md:270-275
+
+    - pattern: "Resource management with unwind-protect"
+      evidence:
+        - "disconnect uses unwind semantics (iter over statements)"
+        - "Error handling with conditions"
+      convergence_status: convergent
+      matches_docs: true
+      references:
+        - "PATTERN-003 in agent.md shows unwind-protect pattern"
+
+    - pattern: "Type conversion abstraction"
+      evidence:
+        - "float-vector-to-blob / blob-to-float-vector (exported)"
+        - "normalize-name / normalize-type in simple.lisp"
+        - "Type mapping mentioned in docs (RULE-007)"
+      convergence_status: convergent
+      matches_docs: true
+
+  dependency_map:
+    external_dependencies:
+      - name: cffi
+        role: "Foreign function interface to SQLite C library"
+        system: "CFFI library"
+
+      - name: iterate
+        role: "Advanced iteration macros"
+        system: "iterate library"
+        evidence: "(:use :iter) in package definition"
+
+      - name: SQLite C library
+        role: "Embedded database engine"
+        system: "System library (libsqlite3)"
+
+    internal_dependencies:
+      sqlite-ffi: []
+      cache: []
+      sqlite: [sqlite-ffi, cache]
+      simple: [sqlite]
+      sqlite-vec: [sqlite, simple]
+
+  test_coverage:
+    test_files:
+      - path: sqlite-tests.lisp
+        role: "Core sqlite.lisp functionality tests"
+
+      - path: simple-tests.lisp
+        role: "Simple API (simple.lisp) tests"
+
+      - path: sqlite-vec-tests.lisp
+        role: "Vector extension tests"
+
+    coverage_assessment: "comprehensive"
+    notes: "Each major module has dedicated test file"
+
+  observations:
+    - id: obs-struct-001
+      category: convergent
+      subject: "Module structure matches documentation"
+      confidence: 0.95
+      details: |
+        All modules documented in README and agent.md are present in code:
+        - Core API (sqlite.lisp)
+        - Simple API (simple.lisp)
+        - Vector API (sqlite-vec.lisp)
+        - FFI layer (sqlite-ffi.lisp)
+        - Caching (cache.lisp)
+
+    - id: obs-struct-002
+      category: convergent
+      subject: "Extension loading properly implemented"
+      confidence: 0.95
+      details: |
+        enable-load-extension and load-extension found in sqlite.lisp
+        matches RULE-006 requirement in agent.md.
+        Implementation includes proper error handling.
+
+    - id: obs-struct-003
+      category: pending_verification
+      subject: "Iterate integration not yet located"
+      confidence: 0.70
+      details: |
+        Documented functions (in-sqlite-query, in-sqlite-query/named, on-sqlite-statement)
+        not found in examined code excerpts. Likely in middle/end of sqlite.lisp.
+        Package imports :iterate, suggesting integration exists.
+      action: "Examine full sqlite.lisp in Pass 2"
+
+    - id: obs-struct-004
+      category: convergent
+      subject: "WHERE clause s-expression compiler"
+      confidence: 0.95
+      details: |
+        compile-where function in simple.lisp (line 38) implements s-expression
+        to SQL compilation for WHERE clauses. Supports operators documented in
+        RULE-010: :and, :or, :not, :=, :<, :>, etc.
+        This is the implementation behind the simple API's WHERE clause feature.
+
+    - id: obs-struct-005
+      category: convergent
+      subject: "Statement lifecycle matches documentation"
+      confidence: 0.90
+      details: |
+        Code evidence supports documented lifecycle:
+        - prepare-statement creates statement
+        - bind-parameter for parameters
+        - step-statement for execution
+        - finalize-statement returns to cache (via cache.lisp)
+        Cache initialized in sqlite-handle (line 104) with destructor.
+
+  triangulation_summary:
+    total_features_examined: 9
+    convergent_features: 8
+    code_only_features: 0
+    docs_only_features: 0
+    conflicts: 0
+    pending_verification: 1  # Iterate integration
+
+    confidence_distribution:
+      high_confidence: 8
+      medium_confidence: 1
+      low_confidence: 0
+
+    overall_assessment: |
+      Excellent documentation-code convergence. All major features documented
+      are present in code structure. No undocumented features discovered.
+      Module structure exactly matches documented layered architecture.
+
+      Single pending item (iterate integration) likely present but not yet
+      examined due to partial file reading.

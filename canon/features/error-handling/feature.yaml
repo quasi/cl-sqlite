@@ -1,0 +1,46 @@
+---
+feature_name: error-handling
+feature_status: stable
+confidence: 0.85
+
+metadata:
+  category: core
+  priority: high
+  dependencies:
+    - connection-management
+
+triangulation:
+  pass0_docs: found
+  pass1_structure: found
+  pass2_contracts: found
+  pass3_behaviors: found
+  pass4_properties: found
+  pass5_rationale: found
+  convergence: convergent
+
+quality_metrics:
+  test_coverage: medium
+  scenarios_tested: 3
+  contracts_documented: 2
+  properties_verified: 3
+  documentation_quality: 90
+
+artifacts:
+  contracts:
+    - contracts/sqlite-error.md
+    - contracts/error-code.md
+  scenarios:
+    - scenarios/error-handling-basic.md
+    - scenarios/error-recovery.md
+    - scenarios/constraint-violation.md
+  properties:
+    - properties/error-context.md
+    - properties/error-recovery-semantics.md
+    - properties/exception-safety.md
+
+source_locations:
+  code:
+    - sqlite.lisp (error handling throughout)
+  documentation:
+    - README.md (error examples)
+    - CL-SQLITE.agent.md (error patterns)

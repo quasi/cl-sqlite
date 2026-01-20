@@ -1,0 +1,63 @@
+---
+feature_name: vector-extension
+feature_status: stable
+confidence: 0.90
+
+metadata:
+  category: extension
+  priority: medium
+  dependencies:
+    - extension-loading
+  related_features:
+    - query-execution
+
+triangulation:
+  pass0_docs: found
+  pass1_structure: found
+  pass2_contracts: found
+  pass3_behaviors: found
+  pass4_properties: found
+  pass5_rationale: found
+  convergence: convergent
+
+quality_metrics:
+  test_coverage: high
+  scenarios_tested: 4
+  contracts_documented: 8
+  properties_verified: 2
+  documentation_quality: 95
+
+artifacts:
+  contracts:
+    - contracts/create-vector-table.md
+    - contracts/vector-search.md
+    - contracts/float-vector-to-blob.md
+    - contracts/blob-to-float-vector.md
+    - contracts/vec-add.md
+    - contracts/vec-distance-L2.md
+    - contracts/vec-distance-cosine.md
+    - contracts/vec-normalize.md
+  scenarios:
+    - scenarios/vector-table-creation.md
+    - scenarios/vector-search-basic.md
+    - scenarios/vector-operations.md
+    - scenarios/vector-conversion.md
+  properties:
+    - properties/vector-encoding.md
+    - properties/vector-operations-semantics.md
+
+source_locations:
+  code:
+    - sqlite-vec.lisp (100+ lines)
+    - sqlite.lisp (133-175: conversion functions)
+  tests:
+    - sqlite-vec-tests.lisp (75 lines)
+  documentation:
+    - README.md:211-250
+    - CL-SQLITE.agent.md:910-920
+
+cross_references:
+  decisions:
+    - DEC-003 (Vector Extension Support)
+  rules:
+    - RULE-006 (Extension Loading Sequence)

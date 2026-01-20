@@ -1,0 +1,58 @@
+initiation:
+  status: in_progress
+  started: 2026-01-20T00:00:00Z
+  last_activity: 2026-01-20T00:00:00Z
+  version: "0.2.0"
+
+stack:
+  detected: common-lisp
+  framework: asdf
+  profile_applied: common-lisp/library
+
+passes:
+  docs_survey:
+    status: in_progress
+    started: 2026-01-20T00:00:00Z
+    completed: null
+    claims_extracted:
+      vocabulary: 0
+      features: 0
+      architecture: 0
+    staleness_detected: 0
+
+  structural:
+    status: not_started
+
+  contracts:
+    status: not_started
+
+  behaviors:
+    status: not_started
+
+  properties:
+    status: not_started
+
+  rationale_recovery:
+    status: not_started
+
+  reconciliation:
+    status: not_started
+
+observations:
+  total: 0
+  by_category:
+    convergent: 0
+    code_only: 0
+    docs_only: 0
+    conflict: 0
+    coverage_gap: 0
+    stale_comment: 0
+  pending_review: 0
+  resolved: 0
+  blocking: 0
+
+confidence:
+  average: 0.0
+  high_confidence: 0
+  medium_confidence: 0
+  low_confidence: 0

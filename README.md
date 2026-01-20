@@ -276,6 +276,33 @@ To run the test suite, you need to load the `:sqlite-tests` system.
 (sqlite-tests:run-all-sqlite-tests)
 ```
 
-## License
+## Changelog
+- Jan 2026 2.0 New Fork
+
+## Licence of this Fork
+
+MIT
+
+## History from the original repo
+
+Original Repo: https://github.com/TeMPOraL/cl-sqlite
+
+### Support
+This package is written by Kalyanov Dmitry.
+This project has a cl-sqlite-devel mailing list.
+
+ 
+### Historic Changelog
+- 23 Jan 2009 0.1 Initial version
+- 03 Mar 2009 0.1.1 Fixed bug with access to recently freed memory during statement preparation
+- 22 Mar 2009 0.1.2 disconnect function now ensures that all non-finalized statements are finalized before closing the database (otherwise errors are signaled when database is being closed).
+- 28 Apr 2009 0.1.3 Added support for passing all values of type REAL (including RATIONAL) as query parameter. cl-sqlite is made available as git repository.
+- 10 May 2009 0.1.4 Added test suite (based on FiveAM testing framework); changed foreign library definition to work on Mac OS X (thanks to Patrick Stein) and removed the dependency on sqlite3_next_stmt function that appeared only in sqlite 3.6.0 (making cl-sqlite work with older sqlite versions)
+- 13 June 2009 0.1.5 Allow passing pathnames to CONNECT function.
+- 24 Oct 2009 0.1.6 Add busy-timeout argument to CONNECT. Fix library defininitions for running on Microsoft Windows.
+- 14 Nov 2010 0.2 Added support for named parameters. Made statement reset and connection close more safe by clearing statements' bindings and unbinding slot of connection object. Added error condition for SQLite errors. Changes are courtesy of Alexander Gavrilov.
+
+
+## Original License
 
 Public Domain.

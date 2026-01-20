@@ -1,0 +1,71 @@
+---
+feature_name: simplified-interface
+feature_status: stable
+confidence: 0.95
+
+metadata:
+  category: api
+  priority: high
+  dependencies:
+    - connection-management
+    - query-execution
+  related_features:
+    - query-execution
+
+triangulation:
+  pass0_docs: found
+  pass1_structure: found
+  pass2_contracts: found
+  pass3_behaviors: found
+  pass4_properties: found
+  pass5_rationale: found
+  convergence: convergent
+
+quality_metrics:
+  test_coverage: high
+  scenarios_tested: 9
+  contracts_documented: 7
+  properties_verified: 2
+  documentation_quality: 100
+
+artifacts:
+  vocabulary: ../connection-management/vocabulary.md
+  contracts:
+    - contracts/create-table.md
+    - contracts/insert.md
+    - contracts/select.md
+    - contracts/update-table.md
+    - contracts/delete-from.md
+    - contracts/compile-where.md
+    - contracts/normalize-name.md
+  scenarios:
+    - scenarios/create-table-basic.md
+    - scenarios/insert-single-row.md
+    - scenarios/select-with-where.md
+    - scenarios/update-with-where.md
+    - scenarios/delete-with-where.md
+    - scenarios/complex-where-clause.md
+    - scenarios/order-by-limit.md
+    - scenarios/null-handling.md
+    - scenarios/type-normalization.md
+  properties:
+    - properties/sql-injection-prevention.md
+    - properties/where-clause-composition.md
+
+source_locations:
+  code:
+    - simple.lisp (142 lines)
+  tests:
+    - simple-tests.lisp (71 lines)
+  documentation:
+    - README.md:33-69
+    - REFERENCE.md:48-105
+    - CL-SQLITE.agent.md:300-307
+
+cross_references:
+  rules:
+    - RULE-010 (WHERE Operator Validation)
+  patterns:
+    - PATTERN-001 (Simple CRUD Operations)
+  decisions:
+    - DEC-002 (Simplified API)

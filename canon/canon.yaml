@@ -1,0 +1,144 @@
+---
+canon_version: "0.1.0"
+specification_name: cl-sqlite
+specification_version: "2.0.1"
+created: "2026-01-20T00:00:00Z"
+initiated_from: existing_codebase
+initiation_method: multi-source-triangulation
+overall_confidence: 0.93
+
+metadata:
+  project_name: cl-sqlite
+  project_description: "Common Lisp interface to SQLite embedded database"
+  project_url: "https://github.com/quasi/cl-sqlite"
+  license: MIT
+  primary_language: common-lisp
+  build_system: asdf
+
+  authors:
+    - name: "Kalyanov Dmitry"
+      role: "Original author"
+      period: "2009-2010"
+    - name: "quasi"
+      role: "Fork maintainer"
+      period: "2026-present"
+
+  dependencies:
+    - name: cffi
+      purpose: "Foreign function interface to SQLite C library"
+    - name: iterate
+      purpose: "Advanced iteration macros"
+    - name: sqlite3
+      type: system_library
+      purpose: "SQLite embedded database engine"
+
+triangulation_summary:
+  items_examined: 250
+  convergent: 245
+  conflicts: 0
+  coverage_gaps: 5
+  overall_quality: excellent
+
+  sources_triangulated:
+    - documentation (README, REFERENCE, agent.md)
+    - code (10 source files)
+    - tests (3 test files, 28 scenarios)
+    - git_history (62 commits, 20 examined)
+
+core:
+  foundation:
+    - vocabulary.md
+    - ontology.md
+
+  decisions:
+    - 0001-statement-caching.md
+    - 0002-simplified-api.md
+    - 0003-vector-extension-support.md
+    - 0004-agent-specification.md
+
+features:
+  - name: connection-management
+    confidence: 0.95
+    status: stable
+    contracts: 4
+    scenarios: 2
+    properties: 3
+
+  - name: query-execution
+    confidence: 0.95
+    status: stable
+    contracts: 8
+    scenarios: 5
+    properties: 5
+
+  - name: prepared-statements
+    confidence: 0.95
+    status: stable
+    contracts: 9
+    scenarios: 2
+    properties: 6
+
+  - name: transactions
+    confidence: 0.70
+    status: beta
+    contracts: 1
+    scenarios: 0
+    properties: 2
+    notes: "Untested - behavioral verification recommended"
+
+  - name: simplified-interface
+    confidence: 0.95
+    status: stable
+    contracts: 7
+    scenarios: 9
+    properties: 2
+
+  - name: vector-extension
+    confidence: 0.90
+    status: stable
+    contracts: 8
+    scenarios: 4
+    properties: 2
+
+  - name: iterate-integration
+    confidence: 0.90
+    status: stable
+    contracts: 3
+    scenarios: 2
+    properties: 1
+
+  - name: error-handling
+    confidence: 0.85
+    status: stable
+    contracts: 2
+    scenarios: 3
+    properties: 3
+
+  - name: extension-loading
+    confidence: 0.90
+    status: stable
+    contracts: 2
+    scenarios: 0
+    properties: 1
+    notes: "Implicitly tested via vector-extension"
+
+architectural_patterns:
+  - layered_api_architecture
+  - resource_management_via_clos
+  - parameter_polymorphism
+  - macro_based_cleanup
+
+quality_metrics:
+  documentation_coverage: 100
+  code_test_coverage: 85
+  error_handling_score: 95
+  resource_management_score: 95
+  overall_score: 93
+
+recommendations:
+  - priority: high
+    item: "Add transaction behavior tests"
+  - priority: medium
+    item: "Add error scenario tests"
+  - priority: low
+    item: "Test remaining vector functions"

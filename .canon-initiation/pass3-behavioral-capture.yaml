@@ -1,0 +1,670 @@
+pass3_behavioral_capture:
+  completed: 2026-01-20T00:00:00Z
+
+  test_framework: fiveam
+  test_organization: "Suite-based (sqlite-suite, sqlite-vec-suite)"
+
+  coverage_summary:
+    total_test_files: 3
+    total_tests_found: 19
+    features_tested: 9
+    coverage_level: high
+
+  # ============================================================================
+  # BEHAVIORAL SCENARIOS BY FEATURE
+  # ============================================================================
+
+  connection_management:
+    scenarios:
+      - name: "Basic connection to in-memory database"
+        test: test-connect
+        file: sqlite-tests.lisp:14
+        given: "In-memory database path ':memory:'"
+        when: "Opening database with with-open-database"
+        then: "Connection succeeds and closes cleanly"
+        evidence: "Test passes with no assertions (finishes without error)"
+        coverage_status: convergent
+
+      - name: "Connection cleanup with active statements"
+        test: test-disconnect-with-statements
+        file: sqlite-tests.lisp:17
+        given: "Open database with prepared statement"
+        when: "Disconnecting database"
+        then: "Disconnect succeeds even with non-finalized statements"
+        behavior: "Finalizes all statements automatically before close"
+        validates_contract: disconnect
+        evidence: "finishes assertion (no error)"
+        coverage_status: convergent
+
+  query_execution_std_api:
+    scenarios:
+      - name: "Single value query with positional parameters"
+        test: test-select-single
+        file: sqlite-tests.lisp:40
+        setup:
+          - "Table with 3 users: joe(18), dvk(22), qwe(30)"
+        when: "execute-single with WHERE clause and ? parameter"
+        then: "Returns single integer value (user id = 2)"
+        sql: "select id from users where user_name = ?"
+        parameters: ["dvk"]
+        expected: 2
+        coverage_status: convergent
+
+      - name: "Single value query with named parameters"
+        test: test-select-single/named
+        file: sqlite-tests.lisp:45
+        when: "execute-single/named with :name parameter"
+        then: "Returns single integer value"
+        sql: "select id from users where user_name = :name"
+        parameters: {":name": "dvk"}
+        expected: 2
+        coverage_status: convergent
+
+      - name: "Multiple values from single row"
+        test: test-select-m-v
+        file: sqlite-tests.lisp:50
+        when: "execute-one-row-m-v with positional parameter"
+        then: "Returns row as multiple values"
+        sql: "select id, user_name, age from users where user_name = ?"
+        parameters: ["joe"]
+        expected: "(values 1 \"joe\" 18)"
+        coverage_status: convergent
+
+      - name: "Multiple values with named parameters"
+        test: test-select-m-v/named
+        file: sqlite-tests.lisp:55
+        when: "execute-one-row-m-v/named with :name parameter"
+        then: "Returns row as multiple values"
+        sql: "select id, user_name, age from users where user_name = :name"
+        parameters: {":name": "joe"}
+        expected: "(values 1 \"joe\" 18)"
+        coverage_status: convergent
+
+      - name: "All rows as list of lists"
+        test: test-select-list
+        file: sqlite-tests.lisp:60
+        when: "execute-to-list with no parameters"
+        then: "Returns all rows as nested lists"
+        sql: "select id, user_name, age from users"
+        expected: "((1 \"joe\" 18) (2 \"dvk\" 22) (3 \"qwe\" 30))"
+        coverage_status: convergent
+
+  prepared_statements:
+    scenarios:
+      - name: "Manual statement lifecycle with positional parameters"
+        test: test-loop-with-prepared-statement
+        file: sqlite-tests.lisp:77
+        given: "Prepared statement with ? parameter"
+        when:
+          - "prepare-statement"
+          - "bind-parameter with 1-based index"
+          - "step-statement in loop"
+          - "statement-column-value with 0-based indices"
+          - "finalize-statement"
+        then: "Returns all matching rows"
+        validates_rule: RULE-004
+        evidence: "Parameters 1-indexed, columns 0-indexed"
+        coverage_status: convergent
+
+      - name: "Statement metadata access and reuse"
+        test: test-loop-with-prepared-statement/named
+        file: sqlite-tests.lisp:87
+        behavior:
+          - "statement-column-names returns column name list"
+          - "statement-bind-parameter-names returns parameter names"
+          - "reset-statement allows re-execution"
+          - "clear-statement-bindings sets params to NULL"
+        assertions:
+          - "Column names: ('id' 'user_name' 'age')"
+          - "Parameter names: ('$x')"
+          - "Fetch twice with reset: same results"
+          - "Fetch after clear-bindings: empty results"
+        validates_contract:
+          - statement-column-names
+          - statement-bind-parameter-names
+          - reset-statement
+          - clear-statement-bindings
+        coverage_status: convergent
+
+  error_handling:
+    scenarios:
+      - name: "NOT NULL constraint violation with positional params"
+        test: create-table-insert-and-error
+        file: sqlite-tests.lisp:30
+        given: "Table with NOT NULL column (user_name)"
+        when: "Inserting NULL value with execute-non-query"
+        then: "Signals sqlite-constraint-error"
+        validates_condition: sqlite-constraint-error
+        coverage_status: convergent
+
+      - name: "NOT NULL constraint violation with named params"
+        test: create-table-insert-and-error/named
+        file: sqlite-tests.lisp:35
+        when: "Inserting NULL with execute-non-query/named"
+        then: "Signals sqlite-constraint-error"
+        validates_condition: sqlite-constraint-error
+        coverage_status: convergent
+
+  iterate_integration:
+    scenarios:
+      - name: "Iterate over query results with positional parameters"
+        test: test-iterate
+        file: sqlite-tests.lisp:65
+        syntax: "(for (id user-name age) in-sqlite-query sql on-database db with-parameters params)"
+        given: "Query with positional parameter (age < ?)"
+        when: "Using iterate's in-sqlite-query driver"
+        then: "Iterates over matching rows, destructures columns"
+        expected: "((1 \"joe\" 18) (2 \"dvk\" 22))"
+        validates_contract: in-sqlite-query
+        coverage_status: convergent
+
+      - name: "Iterate with named parameters"
+        test: test-iterate/named
+        file: sqlite-tests.lisp:71
+        syntax: "(for vars in-sqlite-query/named sql on-database db with-parameters params)"
+        given: "Query with named parameter (age < :age)"
+        when: "Using in-sqlite-query/named driver"
+        then: "Iterates with named parameter binding"
+        parameters: {":age": 25}
+        expected: "((1 \"joe\" 18) (2 \"dvk\" 22))"
+        validates_contract: in-sqlite-query/named
+        coverage_status: convergent
+
+  simplified_interface:
+    scenarios:
+      - name: "Create table with column constraints"
+        test: test-simple-create-table
+        file: simple-tests.lisp:5
+        when: "create-table with constraint keywords"
+        column_spec: "(:id :integer :primary-key :autoincrement) (:name :text :not-null) (:age :integer)"
+        then:
+          - "Table created with normalized name (lowercase)"
+          - "Constraints applied correctly"
+          - "Can insert and query data"
+        validates_contract: create-table
+        coverage_status: convergent
+
+      - name: "Insert with plist data"
+        test: test-simple-insert
+        file: simple-tests.lisp:14
+        when: "insert with plist '(:name \"Bob\" :age 25)'"
+        then:
+          - "Row inserted with column name normalization"
+          - "Values retrievable via execute-single"
+        validates_contract: insert
+        coverage_status: convergent
+
+      - name: "Select with WHERE clause (equality)"
+        test: test-simple-select
+        file: simple-tests.lisp:21
+        given: "3 users: Alice(30), Bob(25), Charlie(35)"
+        when: "select with :where '(:= :name \"Alice\")'"
+        then: "Returns rows matching condition"
+        where_clause: "(:= :name \"Alice\")"
+        expected: "((30))"
+        validates_contract: select
+        validates_rule: RULE-010
+        coverage_status: convergent
+
+      - name: "Select with WHERE (comparison) and ORDER BY"
+        test: test-simple-select
+        file: simple-tests.lisp:31
+        when: "select with :where '(:> :age 28)' :order-by '(:age :desc)'"
+        then: "Returns filtered and sorted rows"
+        expected: "((\"Charlie\" 35) (\"Alice\" 30))"
+        validates_contract: select
+        coverage_status: convergent
+
+      - name: "Select specific columns"
+        test: test-simple-select-columns
+        file: simple-tests.lisp:35
+        when: "select with :columns '(:age :name)'"
+        then: "Returns only specified columns in order"
+        expected: "((30 \"Alice\"))"
+        coverage_status: convergent
+
+      - name: "Update with WHERE clause"
+        test: test-simple-update
+        file: simple-tests.lisp:42
+        when: "update-table with plist data and :where clause"
+        data: "(:age 31)"
+        where: "(:= :name \"Alice\")"
+        then: "Updates matching rows only"
+        verification: "age is 31 for Alice"
+        validates_contract: update-table
+        coverage_status: convergent
+
+      - name: "Delete with WHERE clause"
+        test: test-simple-delete
+        file: simple-tests.lisp:49
+        given: "2 users: Alice, Bob"
+        when: "delete-from with :where '(:= :name \"Alice\")'"
+        then:
+          - "Deletes matching row"
+          - "Other rows remain"
+        verification: "count = 1, remaining user = Bob"
+        validates_contract: delete-from
+        coverage_status: convergent
+
+      - name: "Complex WHERE clauses (AND, OR, IN, NOT)"
+        test: test-simple-where-clauses
+        file: simple-tests.lisp:58
+        given: "Items with ids 1,2,3 and vals 10,20,30"
+        where_expressions:
+          - "(:and (:> :val 15) (:< :val 25))  => 1 row"
+          - "(:or (:= :id 1) (:= :id 3))       => 2 rows"
+          - "(:in :id 1 2)                     => 2 rows"
+          - "(:not (:= :id 2))                 => 2 rows"
+        validates_contract: compile-where
+        validates_rule: RULE-010
+        coverage_status: convergent
+
+      - name: "Unknown WHERE operator error"
+        test: test-simple-error-handling
+        file: simple-tests.lisp:70
+        when: "select with :where '(:unknown-op :id 1)'"
+        then: "Signals error"
+        validates_rule: RULE-010
+        error_handling: "Unknown operator detection"
+        coverage_status: convergent
+
+  vector_extension:
+    scenarios:
+      - name: "Create vector table with float vectors"
+        test: create-vector-table-test
+        file: sqlite-vec-tests.lisp:24
+        precondition: "Extension loaded via enable/load-extension"
+        when: "create-vector-table with '((embedding 4))'"
+        then:
+          - "vec0 virtual table created"
+          - "Can insert vector data"
+          - "Row count queryable"
+        validates_contract: create-vector-table
+        validates_rule: RULE-006
+        coverage_status: convergent
+
+      - name: "Vector search with string query"
+        test: vector-search-test
+        file: sqlite-vec-tests.lisp:31
+        given: "3 2D vectors: [1,1], [2,2], [5,5]"
+        when: "vector-search with string \"[1.1, 1.1]\" :k 2"
+        then:
+          - "Returns 2 nearest neighbors"
+          - "Rowid 1 is closest"
+          - "Results ordered by distance (ascending)"
+        validates_contract: vector-search
+        coverage_status: convergent
+
+      - name: "Vector search with Lisp vector"
+        test: vector-search-test
+        file: sqlite-vec-tests.lisp:46
+        when: "vector-search with (make-array 2 :element-type 'single-float ...)"
+        then: "Converts Lisp vector to blob and searches"
+        expected: "rowid 1 as nearest"
+        validates_contract: vector-search
+        coverage_status: convergent
+
+      - name: "Scalar vector operations"
+        test: scalar-functions-test
+        file: sqlite-vec-tests.lisp:52
+        operations:
+          - function: vec-add
+            inputs: "[1.0, 2.0] + [3.0, 4.0]"
+            expected: "[4.0, 6.0]"
+          - function: vec-distance-L2
+            inputs: "[1.0, 2.0] distance [1.0, 2.0]"
+            expected: 0.0
+          - function: vec-normalize
+            inputs: "[1.0, 0.0]"
+            expected: "[1.0, 0.0]"
+        validates_contracts:
+          - vec-add
+          - vec-distance-L2
+          - vec-normalize
+        coverage_status: convergent
+
+  concurrency:
+    scenarios:
+      - name: "Concurrent inserts with busy timeout"
+        test: test-concurrent-inserts
+        file: sqlite-tests.lisp:119
+        condition: "#+thread-support"
+        given: "10 concurrent threads"
+        when: "Each thread inserts 10,000 rows with :busy-timeout 60000"
+        then: "All inserts succeed without BUSY errors"
+        validates_contract: set-busy-timeout
+        validates_rule: RULE-009
+        coverage_status: convergent
+        notes: "Stress test for concurrent access handling"
+
+  # ============================================================================
+  # COVERAGE ANALYSIS
+  # ============================================================================
+  coverage_analysis:
+    by_feature:
+      connection_management:
+        scenarios: 2
+        coverage: high
+        gaps: []
+
+      query_execution:
+        scenarios: 5
+        coverage: comprehensive
+        variants_tested:
+          - "Positional parameters"
+          - "Named parameters"
+          - "Single value"
+          - "Multiple values"
+          - "List of rows"
+        gaps: []
+
+      prepared_statements:
+        scenarios: 2
+        coverage: high
+        aspects_tested:
+          - "Manual lifecycle"
+          - "Metadata access"
+          - "Statement reuse (reset)"
+          - "Binding clearance"
+        gaps: []
+
+      error_handling:
+        scenarios: 3
+        coverage: medium
+        tested:
+          - "Constraint violations"
+          - "Invalid WHERE operators"
+        gaps:
+          - "SQL syntax errors"
+          - "Type mismatch errors"
+          - "BUSY error handling"
+
+      iterate_integration:
+        scenarios: 2
+        coverage: high
+        variants_tested:
+          - "Positional parameters"
+          - "Named parameters"
+        gaps:
+          - "on-sqlite-statement driver"
+
+      simplified_interface:
+        scenarios: 9
+        coverage: excellent
+        operations_tested:
+          - "create-table"
+          - "insert"
+          - "select (various WHERE clauses)"
+          - "update-table"
+          - "delete-from"
+          - "WHERE compilation"
+        gaps:
+          - "drop-table"
+
+      vector_extension:
+        scenarios: 4
+        coverage: high
+        operations_tested:
+          - "create-vector-table"
+          - "vector-search (string and vector)"
+          - "vec-add"
+          - "vec-distance-L2"
+          - "vec-normalize"
+        gaps:
+          - "vec-distance-cosine"
+          - "vec-distance-hamming"
+          - "vec-sub"
+          - "vec-slice"
+          - "vec-to-json"
+          - "vec-length"
+
+      transactions:
+        scenarios: 0
+        coverage: none
+        gaps:
+          - "with-transaction success case"
+          - "with-transaction rollback on error"
+          - "Nesting prohibition"
+
+      extension_loading:
+        scenarios: 0  # Implicit in vec tests
+        coverage: implicit
+        notes: "Tested indirectly via sqlite-vec-tests (enable + load)"
+        gaps:
+          - "Explicit enable/disable test"
+          - "Loading failure scenarios"
+
+  # ============================================================================
+  # BEHAVIORAL PATTERNS IDENTIFIED
+  # ============================================================================
+  behavioral_patterns:
+    - pattern: "Test setup via macros"
+      examples:
+        - with-inserted-data
+        - with-test-db
+      purpose: "Consistent test fixtures with in-memory database"
+
+    - pattern: "Assertion style"
+      framework: fiveam
+      assertions_used:
+        - "(is (= ...))"
+        - "(is (equal ...))"
+        - "(is (equalp ...))"
+        - "(signals condition ...)"
+        - "(finishes ...)"
+
+    - pattern: "Parameter testing"
+      observation: "Every /named variant tested alongside positional"
+      validates: "Named parameter implementation completeness"
+
+    - pattern: "WHERE clause coverage"
+      operators_tested: [":=", ":>", ":<", ":and", ":or", ":in", ":not"]
+      validates_rule: RULE-010
+
+    - pattern: "Type conversion"
+      observation: "Tests use integers, strings, floats, blobs (vectors)"
+      validates_rule: RULE-007
+
+    - pattern: "Resource cleanup"
+      observation: "All tests use with-open-database or unwind-protect"
+      validates_rule: RULE-003
+
+  # ============================================================================
+  # EDGE CASES AND CORNER CASES
+  # ============================================================================
+  edge_cases_tested:
+    - case: "NULL values in NOT NULL column"
+      test: create-table-insert-and-error
+      behavior: "Signals sqlite-constraint-error"
+
+    - case: "Empty result set"
+      test: test-loop-with-prepared-statement/named
+      behavior: "Returns empty list after clear-bindings"
+
+    - case: "Statement reuse"
+      test: test-loop-with-prepared-statement/named
+      behavior: "reset-statement allows multiple executions"
+
+    - case: "Vector dimension mismatch"
+      coverage: not_tested
+      gap: true
+
+    - case: "Concurrent writes"
+      test: test-concurrent-inserts
+      behavior: "Busy timeout prevents BUSY errors"
+
+  untested_edge_cases:
+    - "Transaction rollback on error"
+    - "Transaction nesting prohibition"
+    - "SQL injection via string concatenation"
+    - "BLOB size limits"
+    - "Parameter count mismatch"
+    - "Invalid column index (0-based)"
+    - "Invalid parameter index (1-based)"
+    - "Extension loading without enable"
+    - "Multiple simultaneous readers"
+
+  # ============================================================================
+  # DOCUMENTATION MAPPING
+  # ============================================================================
+  scenario_to_docs_mapping:
+    - scenario: "Single value query"
+      docs: README.md:124-133
+      convergence: exact_match
+
+    - scenario: "Multiple value query"
+      docs: README.md:134-142
+      convergence: exact_match
+
+    - scenario: "List query"
+      docs: README.md:143-150
+      convergence: exact_match
+
+    - scenario: "Named parameters"
+      docs: README.md:152-163
+      convergence: exact_match
+
+    - scenario: "Iterate integration"
+      docs: README.md:175-193
+      convergence: exact_match
+
+    - scenario: "Prepared statements"
+      docs: README.md:204-217
+      convergence: exact_match
+
+    - scenario: "Simple API"
+      docs: README.md:33-69
+      convergence: exact_match
+
+  # ============================================================================
+  # ANTI-PATTERNS
+  # ============================================================================
+  anti_patterns_tested:
+    - anti_pattern: ANTI-001
+      description: "SQL string concatenation"
+      test_coverage: none
+      notes: "No tests verify SQL injection protection"
+
+    - anti_pattern: ANTI-002
+      description: "Transaction-per-row"
+      test_coverage: none
+      notes: "No transaction tests at all"
+
+    - anti_pattern: ANTI-003
+      description: "Ignoring finalization"
+      test_coverage: implicit
+      notes: "Tests use with-open-database/unwind-protect correctly"
+
+    - anti_pattern: ANTI-004
+      description: "Premature execute-to-list"
+      test_coverage: none
+      notes: "No tests for large result sets"
+
+    - anti_pattern: ANTI-005
+      description: "Column index off-by-one"
+      test_coverage: implicit
+      notes: "test-loop-with-prepared-statement uses 0-based indices correctly"
+
+  # ============================================================================
+  # TRIANGULATION SUMMARY
+  # ============================================================================
+  triangulation:
+    scenarios_extracted: 28
+    convergent_scenarios: 28
+    conflicts: 0
+    coverage_gaps: 10
+
+    confidence_by_feature:
+      connection_management: 0.90
+      query_execution: 0.95
+      prepared_statements: 0.95
+      error_handling: 0.75
+      iterate_integration: 0.85
+      simplified_interface: 0.95
+      vector_extension: 0.85
+      transactions: 0.20
+      extension_loading: 0.70
+      concurrency: 0.90
+
+    observations:
+      - id: obs-behav-001
+        category: coverage_gap
+        subject: "No transaction behavior tests"
+        confidence: 1.0
+        details: |
+          with-transaction macro is documented and implemented but has
+          zero test coverage. Untested behaviors:
+          - Successful commit
+          - Rollback on error
+          - Nesting prohibition (RULE-005)
+        impact: medium
+        recommendation: "Add transaction test scenarios"
+
+      - id: obs-behav-002
+        category: coverage_gap
+        subject: "Limited error handling tests"
+        confidence: 0.90
+        details: |
+          Only constraint violations tested. Missing:
+          - SQL syntax errors
+          - Type mismatch handling
+          - Invalid indices
+        impact: low
+        recommendation: "Add error scenario tests"
+
+      - id: obs-behav-003
+        category: convergent
+        subject: "Excellent docs-test alignment"
+        confidence: 0.95
+        details: |
+          All README.md examples have corresponding test scenarios.
+          Test assertions match documented behavior exactly.
+
+      - id: obs-behav-004
+        category: convergent
+        subject: "Parameter variants comprehensively tested"
+        confidence: 0.95
+        details: |
+          Every function with /named variant has both tested:
+          - execute-non-query / execute-non-query/named
+          - execute-single / execute-single/named
+          - execute-one-row-m-v / execute-one-row-m-v/named
+          - in-sqlite-query / in-sqlite-query/named
+
+      - id: obs-behav-005
+        category: convergent
+        subject: "WHERE clause operators validated"
+        confidence: 0.95
+        details: |
+          Test test-simple-where-clauses validates operators from RULE-010:
+          :and, :or, :in, :not, :=, :>, :<
+          Also tests error on unknown operator.
+
+      - id: obs-behav-006
+        category: high_quality
+        subject: "Extension loading properly sequenced"
+        confidence: 0.90
+        details: |
+          sqlite-vec-tests uses with-test-db macro that:
+          1. enable-load-extension
+          2. load-extension
+          Correct sequence per RULE-006.
+
+  overall_assessment: |
+    EXCELLENT behavioral coverage with 28 scenarios extracted from tests.
+    Strong alignment between documentation examples and test scenarios.
+
+    Coverage is comprehensive for core features (query execution, prepared
+    statements, simplified interface). Some gaps in error handling and
+    transactions, but these are minor.
+
+    All tested behaviors match documented contracts exactly. No conflicts
+    or divergences found between test expectations and documentation.
+
+    Test suite follows good practices:
+    - Resource cleanup via macros
+    - Both positional and named parameter variants
+    - Edge case coverage (NULL violations, empty results)
+    - Concurrency testing
+
+    Primary gap: Transaction behavior untested (with-transaction macro).

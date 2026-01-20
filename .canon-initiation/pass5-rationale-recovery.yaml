@@ -1,0 +1,456 @@
+pass5_rationale_recovery:
+  completed: 2026-01-20T00:00:00Z
+
+  git_history_analyzed:
+    total_commits: 62
+    commits_examined: 20
+    prs_analyzed: 9
+    date_range: "2009-01-23 to 2026-01-16"
+
+  # ============================================================================
+  # PROJECT EVOLUTION
+  # ============================================================================
+  project_history:
+    phase1_original:
+      period: "2009-2010"
+      author: "Kalyanov Dmitry"
+      description: "Original cl-sqlite implementation"
+      key_features:
+        - "Basic SQLite FFI bindings"
+        - "Connection and prepared statement management"
+        - "Parameter binding"
+        - "Statement caching (added 0.2 - 2010)"
+      status: "Maintained until ~2010, then dormant"
+
+    phase2_fork:
+      period: "2026-01"
+      fork_author: "quasi (google-labs-jules bot)"
+      description: "2.0 fork with modern features"
+      motivation: "Modernize and extend for contemporary use cases"
+      key_additions:
+        - "Simplified Lispy API (Dec 30, 2025)"
+        - "sqlite-vec support (Dec 30, 2025)"
+        - "Comprehensive documentation (Dec 29-31, 2025)"
+        - "Agent-oriented specification (Jan 16, 2026)"
+
+  # ============================================================================
+  # DESIGN DECISIONS RECOVERED
+  # ============================================================================
+  design_decisions:
+    - id: DEC-001
+      feature: "Statement Caching"
+      commit: "Original repo history (0.2 - 2010)"
+      decision: "Cache prepared statements by SQL text"
+      rationale: |
+        Performance optimization. Re-parsing SQL is expensive.
+        MRU cache with size 16 balances memory and hit rate.
+      implementation: cache.lisp + sqlite.lisp:104
+      alternatives_considered: "Unknown (predates fork)"
+      confidence: 0.80
+      source: "Inferred from original changelog"
+
+    - id: DEC-002
+      feature: "Simplified Lispy API"
+      commit: a4f3818 (Dec 30, 2025)
+      pr: "#5 jules/simple-abstraction"
+      decision: "Add s-expression-based query interface"
+      rationale: |
+        Goal: "Writing queries using s-expressions and plists instead of raw SQL strings"
+        Benefits:
+        - More idiomatic for Lisp
+        - Eliminates SQL injection risk (no string concatenation)
+        - Type-safe column/table name handling
+        - Composable WHERE clauses
+      commit_message: "feat: Add simpler lispy abstraction layer"
+      implementation: simple.lisp (142 lines)
+      test_coverage: simple-tests.lisp (71 lines)
+      confidence: 1.0
+      source: "Git commit message + PR description"
+
+    - id: DEC-003
+      feature: "WHERE Clause Compilation"
+      commit: a4f3818
+      decision: "Compile s-expressions to SQL WHERE clauses"
+      rationale: |
+        Part of simplified API design. S-expression representation:
+        - Composable: (:and (:> :age 18) (:< :age 65))
+        - Type-safe: operator validation at runtime
+        - Prevents SQL injection
+      implementation: compile-where function (simple.lisp:38)
+      operators_supported: [":and", ":or", ":not", ":=", ":<", ":>", ":<=", ":>=", ":<>", ":like", ":in", ":is-null", ":is-not-null"]
+      confidence: 1.0
+      source: "Code analysis + tests"
+
+    - id: DEC-004
+      feature: "sqlite-vec Extension Support"
+      commit: 27b3b2b (Dec 30, 2025)
+      pr: "#7 sqlite-vec-support"
+      decision: "Add first-class support for vector search via sqlite-vec extension"
+      rationale: |
+        "Add support for loading SQLite extensions"
+        "Convert between Common Lisp vectors and SQLite BLOBs for vector search"
+        Motivation: Enable vector similarity search in SQLite databases
+        Use case: Embeddings, semantic search, RAG systems
+      implementation:
+        - enable-load-extension, load-extension (sqlite.lisp)
+        - float-vector-to-blob, blob-to-float-vector (sqlite.lisp)
+        - FFI bindings (sqlite-ffi.lisp)
+      verification: "Verified functionality by loading the actual sqlite-vec extension"
+      confidence: 1.0
+      source: "Git commit message"
+
+    - id: DEC-005
+      feature: "Vector API Syntactic Sugar"
+      commit: 45ef406 (Jan 2026)
+      pr: "#9 sqlite-vec-interface"
+      decision: "Add high-level wrapper functions for sqlite-vec"
+      rationale: |
+        "Add syntactic sugar for sqlite-vec"
+        Make vector operations more ergonomic:
+        - create-vector-table instead of raw CREATE VIRTUAL TABLE
+        - vector-search instead of manual MATCH queries
+        - Scalar functions (vec-add, vec-distance-L2, etc.)
+      implementation: sqlite-vec.lisp
+      test_coverage: sqlite-vec-tests.lisp
+      confidence: 1.0
+      source: "Git commit + code analysis"
+
+    - id: DEC-006
+      feature: "Comprehensive Reference Documentation"
+      commit: e402b87 (Dec 29, 2025)
+      pr: "#4 docs/add-reference-md"
+      decision: "Create dedicated REFERENCE.md for complete API documentation"
+      rationale: |
+        "Provide all the details of the functionality we support in a dedicated reference document"
+        Separates:
+        - README.md: Getting started, examples, cookbook
+        - REFERENCE.md: Complete API reference
+        - CL-SQLITE.agent.md: Machine-readable specification
+      confidence: 1.0
+      source: "Git commit message"
+
+    - id: DEC-007
+      feature: "Agent-Oriented Specification"
+      commit: ea83af9 (Jan 16, 2026)
+      decision: "Create machine-readable API specification for AI agents"
+      rationale: |
+        "Reference documentation for agents"
+        Target: Code generation, analysis, refactoring, bug detection
+        Format: Structured rules, patterns, anti-patterns, invariants
+        Benefits:
+        - Deterministic interpretation
+        - Explicit constraints (RULE-001 through RULE-010)
+        - Checkable invariants (INV-001 through INV-005)
+        - Pattern library for correct usage
+      implementation: CL-SQLITE.agent.md (990 lines)
+      confidence: 1.0
+      source: "Git commit + file analysis"
+
+    - id: DEC-008
+      feature: "Type Normalization in Simple API"
+      commit: a4f3818
+      decision: "Normalize table/column names to lowercase, types to uppercase"
+      rationale: |
+        Consistency and predictability:
+        - SQLite is case-insensitive for identifiers
+        - Lisp symbols can be any case
+        - Normalization ensures (:users, 'users, \"USERS\") all work
+      implementation: normalize-name, normalize-type (simple.lisp)
+      confidence: 0.95
+      source: "Code analysis"
+
+    - id: DEC-009
+      feature: "Finalization as Caching"
+      commit: "Original design (pre-fork)"
+      decision: "finalize-statement returns to cache, doesn't destroy"
+      rationale: |
+        Optimize for statement reuse:
+        - Typical usage: same queries repeatedly
+        - Re-parsing is expensive
+        - MRU cache ensures hot statements stay prepared
+        - really-finalize-statement for true destruction
+      implementation: finalize-statement vs really-finalize-statement
+      tradeoff: "Semantic confusion vs. performance gain"
+      confidence: 0.85
+      source: "Inferred from code + original changelog"
+
+    - id: DEC-010
+      feature: "Named Parameter Support"
+      commit: "Original repo (0.2 - 2010)"
+      author: "Alexander Gavrilov"
+      decision: "Support :name, @name, $name parameter formats"
+      rationale: |
+        Flexibility and compatibility:
+        - Different SQL parameter conventions
+        - Better readability than ? ? ?
+        - Matches SQLite's native support
+      implementation: "/named function variants"
+      confidence: 0.90
+      source: "Original changelog: 'Added support for named parameters'"
+
+    - id: DEC-011
+      feature: "Iterate Integration"
+      commit: "Original design"
+      decision: "Provide iterate drivers for query iteration"
+      rationale: |
+        Idiomatic Lisp iteration:
+        - iterate library is standard in CL ecosystem
+        - Zero-copy row iteration
+        - Fits natural Lisp iteration patterns
+        - Alternative to execute-to-list for large results
+      implementation: defmacro-driver (in-sqlite-query, etc.)
+      confidence: 0.90
+      source: "Original design"
+
+    - id: DEC-012
+      feature: "Error Condition Hierarchy"
+      commit: "Original repo (0.2 - 2010)"
+      author: "Alexander Gavrilov"
+      decision: "Specific error conditions (sqlite-constraint-error) inherit from base"
+      rationale: |
+        Fine-grained error handling:
+        - Catch specific error types (e.g., constraint violations)
+        - Preserve error context (db, sql, error code)
+        - Follows Common Lisp condition system conventions
+      implementation: sqlite-error, sqlite-constraint-error
+      confidence: 0.95
+      source: "Original changelog: 'Added error condition for SQLite errors'"
+
+  # ============================================================================
+  # ARCHITECTURAL RATIONALE
+  # ============================================================================
+  architectural_decisions:
+    - id: ARCH-001
+      pattern: "Layered API Architecture"
+      layers:
+        - "FFI (sqlite-ffi): Direct C bindings"
+        - "Core (sqlite): Connection, statements, standard API"
+        - "Simple (simple): S-expression queries"
+        - "Extensions (sqlite-vec): Domain-specific"
+      rationale: |
+        Separation of concerns:
+        - FFI layer: thin wrapper, no abstractions
+        - Core layer: resource management, type conversion
+        - Simple layer: Lisp idioms
+        - Extension layer: opt-in functionality
+        Each layer builds on previous, user chooses abstraction level.
+      confidence: 0.95
+      source: "Inferred from structure"
+
+    - id: ARCH-002
+      pattern: "Resource Management via CLOS"
+      decision: "Use CLOS classes (sqlite-handle, sqlite-statement) for resources"
+      rationale: |
+        Leverage CLOS for lifecycle management:
+        - initialize-instance: acquire resources
+        - Slot access control: encapsulation
+        - Method dispatch: polymorphism
+        Benefits over simple structs:
+        - Automatic initialization (database open on instantiation)
+        - Slot introspection for state checks (slot-boundp)
+      confidence: 0.90
+      source: "Inferred from design"
+
+    - id: ARCH-003
+      pattern: "Parameter Polymorphism (Index or Name)"
+      decision: "bind-parameter accepts integer or string"
+      rationale: |
+        Flexibility without duplication:
+        - Single function handles both use cases
+        - etypecase dispatch
+        - No need for bind-parameter-by-index vs bind-parameter-by-name
+      implementation: sqlite.lisp:429-431
+      confidence: 0.95
+      source: "Code analysis"
+
+    - id: ARCH-004
+      pattern: "Macro-Based Resource Cleanup"
+      macros: [with-open-database, with-transaction, with-prepared-statement]
+      rationale: |
+        Ensure cleanup via unwind-protect:
+        - Exception-safe resource management
+        - Prevents resource leaks
+        - Idiomatic Lisp pattern (with-* macros)
+      confidence: 1.0
+      source: "Common Lisp idiom"
+
+  # ============================================================================
+  # TECHNOLOGY CHOICES
+  # ============================================================================
+  technology_choices:
+    - choice: "CFFI for FFI"
+      rationale: "Standard Common Lisp FFI library, portable across implementations"
+      alternatives: "Implementation-specific FFI"
+      confidence: 1.0
+
+    - choice: "iterate library"
+      rationale: "Powerful, extensible iteration macros, defmacro-driver support"
+      alternatives: "loop, series"
+      confidence: 0.95
+
+    - choice: "fiveam for testing"
+      rationale: "Mature, well-supported CL testing framework"
+      alternatives: "prove, parachute"
+      confidence: 0.90
+      source: "Inferred from test files"
+
+    - choice: "SQLite C library"
+      rationale: "Embedded, zero-configuration, widely available"
+      alternatives: "Other embedded databases"
+      confidence: 1.0
+      source: "Library purpose"
+
+  # ============================================================================
+  # IMPLEMENTATION PATTERNS
+  # ============================================================================
+  implementation_patterns:
+    - pattern: "Error Checking After Every FFI Call"
+      rationale: "Comprehensive error handling, immediate error detection"
+      evidence: "Consistent (unless (eq error-code :ok) ...) pattern"
+      confidence: 1.0
+
+    - pattern: "Parameter Lists as &rest"
+      rationale: "Flexible arity, natural call syntax"
+      example: "(execute-non-query db sql param1 param2 ...)"
+      confidence: 1.0
+
+    - pattern: "Named Variants via Separate Functions"
+      rationale: "Clear distinction, no magic parameter detection"
+      example: "execute-single vs execute-single/named"
+      tradeoff: "More functions vs. more complex dispatch"
+      confidence: 0.95
+
+    - pattern: "Gensym in Macros"
+      rationale: "Avoid variable capture in macro expansions"
+      evidence: "All macros use gensym for internal bindings"
+      confidence: 1.0
+      source: "Common Lisp best practice"
+
+  # ============================================================================
+  # EVOLUTION TRENDS
+  # ============================================================================
+  evolution_trends:
+    - trend: "Increasing Abstraction Levels"
+      progression: "FFI → Core → Simple → Vec"
+      observation: "Each addition raises abstraction while preserving lower layers"
+
+    - trend: "Documentation Maturity"
+      progression: "Basic README → REFERENCE.md → Agent.md"
+      observation: "From human-oriented to machine-readable specification"
+
+    - trend: "Modern Use Case Support"
+      examples:
+        - "Vector search (AI/ML use cases)"
+        - "S-expression queries (Lisp idioms)"
+        - "Agent-oriented docs (LLM integration)"
+      observation: "2.0 fork adapts to contemporary needs"
+
+    - trend: "Test-Driven Development"
+      observation: "Every new feature has dedicated test file"
+      examples:
+        - "simple.lisp → simple-tests.lisp"
+        - "sqlite-vec.lisp → sqlite-vec-tests.lisp"
+
+  # ============================================================================
+  # UNRESOLVED QUESTIONS
+  # ============================================================================
+  unresolved_questions:
+    - question: "Why cache size of 16?"
+      speculation: "Empirical choice, but no documented rationale"
+      confidence: 0.50
+      impact: low
+
+    - question: "Why not property-based testing?"
+      speculation: "Traditional example-based tests sufficient"
+      confidence: 0.60
+      impact: low
+
+    - question: "Why separate finalize vs really-finalize?"
+      speculation: "Performance optimization, but semantic confusion"
+      confidence: 0.70
+      impact: medium
+      notes: "Trade-off: performance vs. clarity"
+
+    - question: "Why no connection pooling?"
+      speculation: "Single-threaded use case, or left to user"
+      confidence: 0.60
+      impact: low
+
+  # ============================================================================
+  # DECISIONS NOT TO IMPLEMENT
+  # ============================================================================
+  negative_decisions:
+    - decision: "No ORM layer"
+      rationale_inferred: "Keep library focused on SQLite access, not object mapping"
+      confidence: 0.70
+
+    - decision: "No async/promise-based API"
+      rationale_inferred: "SQLite is synchronous, adding async layer would complicate"
+      confidence: 0.80
+
+    - decision: "No built-in migration system"
+      rationale_inferred: "Out of scope, many external tools available"
+      confidence: 0.75
+
+  # ============================================================================
+  # LESSONS LEARNED (Inferred)
+  # ============================================================================
+  lessons_learned:
+    - lesson: "Layered APIs Serve Different Users"
+      evidence: "Simple API added after Core API existed for years"
+      takeaway: "Power users use Core, beginners use Simple"
+
+    - lesson: "Documentation for Different Audiences"
+      evidence: "README, REFERENCE, Agent.md serve distinct purposes"
+      takeaway: "Humans need examples, machines need rules"
+
+    - lesson: "Extensions Require Infrastructure"
+      evidence: "enable-load-extension added to support sqlite-vec"
+      takeaway: "Core infrastructure enables ecosystem growth"
+
+  # ============================================================================
+  # RATIONALE CONFIDENCE ASSESSMENT
+  # ============================================================================
+  confidence_assessment:
+    high_confidence: 7   # Git commits with clear messages
+    medium_confidence: 5  # Inferred from code patterns
+    low_confidence: 3    # Speculation
+
+    sources:
+      git_commits: 8
+      pr_descriptions: 4
+      commit_messages: 8
+      code_analysis: 12
+      original_changelog: 3
+      inference: 5
+
+  triangulation_summary:
+    decisions_recovered: 12
+    architectural_patterns: 4
+    technology_choices: 4
+    implementation_patterns: 4
+
+    convergence_with_docs: high
+    convergence_with_code: high
+
+    key_insight: |
+      The 2.0 fork represents deliberate modernization:
+      - Simplified API for ergonomics
+      - Vector support for AI/ML use cases
+      - Agent docs for LLM integration
+      All while preserving original core design.
+
+  overall_assessment: |
+    GOOD rationale recovery despite limited commit history for original
+    decisions (pre-fork). Recent additions (2025-2026) have excellent
+    documentation of rationale in commit messages and PRs.
+
+    The fork shows clear strategic direction:
+    1. Maintain compatibility with original
+    2. Add modern abstractions (simple API)
+    3. Support contemporary use cases (vector search)
+    4. Improve documentation quality
+
+    Original design decisions (caching, named parameters, error conditions)
+    inferred from code structure and original changelog. Confidence is
+    medium-to-high due to consistency with documented patterns.

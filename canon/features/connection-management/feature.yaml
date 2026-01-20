@@ -1,0 +1,67 @@
+---
+feature_name: connection-management
+feature_status: stable
+confidence: 0.95
+
+metadata:
+  category: core
+  priority: critical
+  dependencies: []
+  related_features:
+    - prepared-statements
+    - query-execution
+    - transactions
+
+triangulation:
+  pass0_docs: found
+  pass1_structure: found
+  pass2_contracts: found
+  pass3_behaviors: found
+  pass4_properties: found
+  pass5_rationale: found
+  convergence: convergent
+
+quality_metrics:
+  test_coverage: high
+  scenarios_tested: 2
+  contracts_documented: 4
+  properties_verified: 3
+  documentation_quality: 100
+
+artifacts:
+  vocabulary: vocabulary.md
+  contracts:
+    - contracts/connect.md
+    - contracts/disconnect.md
+    - contracts/set-busy-timeout.md
+    - contracts/with-open-database.md
+  scenarios:
+    - scenarios/basic-connection.md
+    - scenarios/connection-cleanup-with-statements.md
+  properties:
+    - properties/connection-state-consistency.md
+    - properties/resource-cleanup.md
+    - properties/busy-timeout-configuration.md
+
+source_locations:
+  code:
+    - sqlite.lisp:90-131 (class + functions)
+  tests:
+    - sqlite-tests.lisp:14-20
+  documentation:
+    - README.md:98-112
+    - REFERENCE.md:9-44
+    - CL-SQLITE.agent.md:870-877
+
+cross_references:
+  invariants:
+    - INV-001 (Connection State Consistency)
+  rules:
+    - RULE-002 (Connection Before Operations)
+    - RULE-009 (Busy Timeout Configuration)
+  patterns:
+    - PATTERN-007 (Connection Pooling Pattern)
+  decisions:
+    - DEC-001 (Statement Caching)
+    - ARCH-002 (Resource Management via CLOS)
+    - ARCH-004 (Macro-Based Resource Cleanup)

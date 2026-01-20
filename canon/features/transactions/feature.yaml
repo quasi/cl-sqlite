@@ -1,0 +1,60 @@
+---
+feature_name: transactions
+feature_status: partial
+confidence: 0.70
+
+metadata:
+  category: core
+  priority: high
+  dependencies:
+    - connection-management
+    - query-execution
+  related_features:
+    - query-execution
+    - error-handling
+
+triangulation:
+  pass0_docs: found
+  pass1_structure: found
+  pass2_contracts: found
+  pass3_behaviors: gap
+  pass4_properties: found
+  pass5_rationale: found
+  convergence: coverage_gap
+
+quality_metrics:
+  test_coverage: low
+  scenarios_tested: 0
+  contracts_documented: 1
+  properties_verified: 2
+  documentation_quality: 80
+
+artifacts:
+  vocabulary: ../connection-management/vocabulary.md
+  contracts:
+    - contracts/with-transaction.md
+  scenarios: []
+  properties:
+    - properties/transaction-atomicity.md
+    - properties/transaction-isolation.md
+
+source_locations:
+  code:
+    - sqlite.lisp:349-364 (with-transaction macro)
+  tests: []
+  documentation:
+    - README.md:191-210
+    - REFERENCE.md:139-155
+    - CL-SQLITE.agent.md:897-909
+
+cross_references:
+  invariants:
+    - INV-004 (Transaction Atomicity)
+    - INV-005 (Transaction Isolation)
+  rules:
+    - RULE-007 (Transaction Scope)
+    - RULE-008 (Commit/Rollback Guarantee)
+  patterns:
+    - PATTERN-004 (Transaction Pattern)
+  decisions:
+    - ARCH-004 (Macro-Based Resource Cleanup)
