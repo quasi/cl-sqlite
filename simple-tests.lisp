@@ -71,3 +71,37 @@
   (with-open-database (db ":memory:")
     (create-table db :items '((:id :integer)))
     (signals error (select db :items :where '(:unknown-op :id 1)))))
+
+;;; Input validation tests
+
+(test test-normalize-name-rejects-unsafe-strings
+  "normalize-name should reject strings that aren't valid SQL identifiers."
+  (signals error (normalize-name "users; DROP TABLE users"))
+  (signals error (normalize-name "col'umn"))
+  (signals error (normalize-name "1startswithnumber"))
+  (signals error (normalize-name ""))
+  (signals error (normalize-name "has space")))
+
+(test test-normalize-name-accepts-valid-identifiers
+  "normalize-name should accept keywords, symbols, and valid identifier strings."
+  (is (equal (normalize-name :users) "users"))
+  (is (equal (normalize-name :user-name) "user_name"))
+  (is (equal (normalize-name 'age) "age"))
+  (is (equal (normalize-name "my_table") "my_table"))
+  (is (equal (normalize-name :id) "id"))
+  (is (equal (normalize-name :a123) "a123")))
+
+(test test-select-rejects-invalid-limit-offset
+  "LIMIT and OFFSET must be non-negative integers when provided."
+  (with-open-database (db ":memory:")
+    (create-table db :items '((:id :integer)))
+    (signals error (select db :items :limit "1; DROP TABLE items"))
+    (signals error (select db :items :limit -1))
+    (signals error (select db :items :offset "abc"))
+    (signals error (select db :items :offset -5))))
+
+(test test-select-rejects-invalid-order-direction
+  "ORDER BY direction must be :asc or :desc."
+  (with-open-database (db ":memory:")
+    (create-table db :items '((:id :integer)))
+    (signals error (select db :items :order-by '(:id :sideways)))))

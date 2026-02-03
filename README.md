@@ -267,6 +267,10 @@ Binary data (BLOBs) are handled as `(vector (unsigned-byte 8))`.
 *   **`sqlite-error`**: Base condition for SQLite errors.
 *   **`sqlite-constraint-error`**: Signaled on constraint violations (e.g. unique key violation).
 
+## Security
+
+The simplified interface (`simple.lisp`) parameterizes all data values through `?` bindings and validates all structural SQL elements (table names, column names, sort direction, limits). See [SQL Injection Analysis](docs/sql-injection-analysis.md) for a detailed assessment against the OWASP SQL Injection Prevention Cheat Sheet.
+
 ## Running Tests
 
 To run the test suite, you need to load the `:sqlite-tests` system.
@@ -277,6 +281,10 @@ To run the test suite, you need to load the `:sqlite-tests` system.
 ```
 
 ## Changelog
+- Feb 2026 2.1 Input validation hardening for simplified interface ([details](docs/sql-injection-analysis.md))
+  - `normalize-name` validates identifiers and converts hyphens to underscores
+  - ORDER BY direction allowlisted to `:asc` / `:desc`
+  - LIMIT and OFFSET type-checked as non-negative integers
 - Jan 2026 2.0 New Fork
 
 ## Licence of this Fork

@@ -6,7 +6,15 @@
   (string-upcase (string type)))
 
 (defun normalize-name (name)
-  (string-downcase (string name)))
+  "Converts NAME to a safe SQL identifier. Keywords and symbols have hyphens
+   converted to underscores. Signals an error if the result is not a valid identifier."
+  (let* ((raw (string-downcase (string name)))
+         (converted (substitute #\_ #\- raw)))
+    (unless (and (plusp (length converted))
+                 (every (lambda (c) (or (alpha-char-p c) (digit-char-p c) (char= c #\_))) converted)
+                 (not (digit-char-p (char converted 0))))
+      (error "Invalid SQL identifier: ~S" name))
+    converted))
 
 (defun build-column-def (col-def)
   (destructuring-bind (name type &rest options) col-def
@@ -21,15 +29,15 @@
              (t (format s " ~A" opt)))))))
 
 (defun create-table (db name columns &key (if-not-exists nil))
-  (let ((sql (format nil "CREATE TABLE ~@[IF NOT EXISTS ~]~A (~{~A~^, ~})"
-                     if-not-exists
+  (let ((sql (format nil "CREATE TABLE ~A~A (~{~A~^, ~})"
+                     (if if-not-exists "IF NOT EXISTS " "")
                      (normalize-name name)
                      (mapcar #'build-column-def columns))))
     (execute-non-query db sql)))
 
 (defun drop-table (db name &key (if-exists nil))
-  (let ((sql (format nil "DROP TABLE ~@[IF EXISTS ~]~A"
-                     if-exists
+  (let ((sql (format nil "DROP TABLE ~A~A"
+                     (if if-exists "IF EXISTS " "")
                      (normalize-name name))))
     (execute-non-query db sql)))
 
@@ -90,13 +98,26 @@
                       (normalize-name table) cols placeholders)))
     (apply #'execute-non-query db sql vals)))
 
+(defun validate-order-direction (dir)
+  "Validates that DIR is :asc or :desc. Returns the SQL string."
+  (let ((s (string-upcase (string dir))))
+    (unless (member s '("ASC" "DESC") :test #'string=)
+      (error "Invalid ORDER BY direction: ~S (must be :asc or :desc)" dir))
+    s))
+
 (defun select (db table &key (columns '(*)) where order-by limit offset)
   "Selects rows from the table.
    COLUMNS: list of keywords/symbols, defaults to '(*)
    WHERE: s-expression for where clause e.g. '(:= :id 1)
    ORDER-BY: list of (:col :asc/:desc) or just :col
-   LIMIT: integer
-   OFFSET: integer"
+   LIMIT: non-negative integer
+   OFFSET: non-negative integer"
+  (when limit
+    (unless (and (integerp limit) (>= limit 0))
+      (error "LIMIT must be a non-negative integer, got: ~S" limit)))
+  (when offset
+    (unless (and (integerp offset) (>= offset 0))
+      (error "OFFSET must be a non-negative integer, got: ~S" offset)))
   (multiple-value-bind (where-sql where-params) (compile-where where)
     (let* ((cols-sql (if (equal columns '(*))
                          "*"
@@ -104,7 +125,7 @@
            (order-sql (if order-by
                           (flet ((format-one-order (x)
                                    (if (listp x)
-                                       (format nil "~A ~A" (normalize-name (first x)) (string-upcase (string (second x))))
+                                       (format nil "~A ~A" (normalize-name (first x)) (validate-order-direction (second x)))
                                        (normalize-name x))))
                             (format nil " ORDER BY ~{~A~^, ~}"
                                     (if (and (listp order-by) (not (keywordp (first order-by))))
