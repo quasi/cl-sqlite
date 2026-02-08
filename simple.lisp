@@ -1,7 +1,5 @@
 (in-package :sqlite)
 
-(export '(create-table drop-table insert select update-table delete-from normalize-name))
-
 (defun normalize-type (type)
   (string-upcase (string type)))
 
@@ -13,7 +11,7 @@
     (unless (and (plusp (length converted))
                  (every (lambda (c) (or (alpha-char-p c) (digit-char-p c) (char= c #\_))) converted)
                  (not (digit-char-p (char converted 0))))
-      (error "Invalid SQL identifier: ~S" name))
+      (sqlite-error nil (list "Invalid SQL identifier: ~S" name)))
     converted))
 
 (defun build-column-def (col-def)
@@ -87,7 +85,7 @@
            (values (format nil "~A IS NULL" (normalize-name (first args))) nil))
           (:is-not-null
            (values (format nil "~A IS NOT NULL" (normalize-name (first args))) nil))
-          (t (error "Unknown operator in where clause: ~A" op))))))
+          (t (sqlite-error nil (list "Unknown operator in where clause: ~A" op)))))))
 
 (defun insert (db table data)
   "Inserts a row into the table. DATA is a plist of column names and values."
@@ -102,7 +100,7 @@
   "Validates that DIR is :asc or :desc. Returns the SQL string."
   (let ((s (string-upcase (string dir))))
     (unless (member s '("ASC" "DESC") :test #'string=)
-      (error "Invalid ORDER BY direction: ~S (must be :asc or :desc)" dir))
+      (sqlite-error nil (list "Invalid ORDER BY direction: ~S (must be :asc or :desc)" dir)))
     s))
 
 (defun select (db table &key (columns '(*)) where order-by limit offset)
@@ -114,10 +112,10 @@
    OFFSET: non-negative integer"
   (when limit
     (unless (and (integerp limit) (>= limit 0))
-      (error "LIMIT must be a non-negative integer, got: ~S" limit)))
+      (sqlite-error nil (list "LIMIT must be a non-negative integer, got: ~S" limit))))
   (when offset
     (unless (and (integerp offset) (>= offset 0))
-      (error "OFFSET must be a non-negative integer, got: ~S" offset)))
+      (sqlite-error nil (list "OFFSET must be a non-negative integer, got: ~S" offset))))
   (multiple-value-bind (where-sql where-params) (compile-where where)
     (let* ((cols-sql (if (equal columns '(*))
                          "*"

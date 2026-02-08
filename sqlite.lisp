@@ -36,7 +36,15 @@
            :enable-load-extension
            :load-extension
            :float-vector-to-blob
-           :blob-to-float-vector))
+           :blob-to-float-vector
+           ;; Simplified interface
+           :create-table
+           :drop-table
+           :insert
+           :select
+           :update-table
+           :delete-from
+           :normalize-name))
 
 (in-package :sqlite)
 
