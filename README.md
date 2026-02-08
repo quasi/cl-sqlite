@@ -1,8 +1,8 @@
-# CL-SQLITE
+# Inquisitio
 
-**CL-SQLITE** is a Common Lisp interface to the [SQLite](https://sqlite.org/) embedded relational database engine. It provides a clean and idiomatic Lisp API for interacting with SQLite databases, supporting both high-level convenience functions and low-level prepared statement operations.
+**Inquisitio** (formerly CL-SQLITE) is a Common Lisp interface to the [SQLite](https://sqlite.org/) embedded relational database engine. It provides a clean and idiomatic Lisp API for interacting with SQLite databases, supporting both high-level convenience functions and low-level prepared statement operations.
 
-The library is available under the Public Domain.
+The library is available under the MIT license.
 
 ## Features
 
@@ -16,10 +16,12 @@ The library is available under the Public Domain.
 
 ## Installation
 
-You can install `cl-sqlite` via [Quicklisp](https://www.quicklisp.org/beta/):
+You can load Inquisitio via ASDF (the `:sqlite` system name still works for backward compatibility):
 
 ```lisp
-(ql:quickload :sqlite)
+(asdf:load-system :inquisitio)
+;; or for backward compatibility:
+(asdf:load-system :sqlite)
 ```
 
 **Prerequisites:**
@@ -151,7 +153,7 @@ Use `execute-to-list` to get all results as a list of lists.
 
 ### Named Parameters
 
-`cl-sqlite` supports named parameters for better code readability. Use the `/named` variant of the functions.
+Inquisitio supports named parameters for better code readability. Use the `/named` variant of the functions.
 
 ```lisp
 (execute-non-query/named *db* "INSERT INTO users (name, age) VALUES (:name, :age)"
@@ -174,7 +176,7 @@ Wrap your operations in `with-transaction`. The transaction is automatically com
 
 ### Using Iterate
 
-If you use the `iterate` library, `cl-sqlite` provides a driver for iterating over query results efficiently without loading everything into memory.
+If you use the `iterate` library, Inquisitio provides a driver for iterating over query results efficiently without loading everything into memory.
 
 ```lisp
 (use-package :iter)

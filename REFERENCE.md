@@ -1,10 +1,10 @@
-# CL-SQLITE Reference Manual
+# Inquisitio Reference Manual
 
-This document provides a comprehensive reference for the `cl-sqlite` library. It covers the public API in the `sqlite` package and the low-level bindings in the `sqlite-ffi` package.
+This document provides a comprehensive reference for the Inquisitio library (formerly cl-sqlite). It covers the public API in the `inquisitio` package (also available as `sqlite` for backward compatibility) and the low-level bindings in the `inquisitio.ffi` package (also available as `sqlite-ffi`).
 
-## Package `sqlite`
+## Package `inquisitio` (nickname: `sqlite`)
 
-The `sqlite` package provides the high-level idiomatic Common Lisp interface to SQLite.
+The `inquisitio` package provides the high-level idiomatic Common Lisp interface to SQLite.
 
 ### Connection Management
 
