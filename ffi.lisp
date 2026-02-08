@@ -272,6 +272,11 @@
   (i :int)
   (n :int))
 
+;;; Value object types
+
+(defcstruct sqlite3-value)
+(defctype p-sqlite3-value (:pointer (:struct sqlite3-value)))
+
 (defcfun sqlite3-bind-value error-code
   (statement p-sqlite3-stmt)
   (i :int)
@@ -325,11 +330,6 @@
 
 (defcfun sqlite3-free-table :void
   (result (:pointer :string)))
-
-;;; Value object types
-
-(defcstruct sqlite3-value)
-(defctype p-sqlite3-value (:pointer (:struct sqlite3-value)))
 
 (defcfun sqlite3-column-value p-sqlite3-value
   (statement p-sqlite3-stmt)
