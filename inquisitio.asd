@@ -7,21 +7,21 @@
 
   :depends-on (:iterate :cffi :telos)
 
-  :components ((:file "features"
+  :components ((:file "src/features"
                 :description "Telos feature hierarchy for intent tracking")
-               (:file "ffi"
+               (:file "src/ffi"
                 :description "Low-level CFFI bindings to the SQLite3 C API")
-               (:file "cache"
+               (:file "src/cache"
                 :description "MRU cache for prepared statement reuse")
-               (:file "core"
+               (:file "src/core"
                 :description "Core database operations: connect, prepare, execute, iterate"
-                :depends-on ("ffi" "cache"))
-               (:file "simplified"
+                :depends-on ("src/ffi" "src/cache"))
+               (:file "src/simplified"
                 :description "S-expression-based CRUD interface"
-                :depends-on ("core"))
-               (:file "vec"
+                :depends-on ("src/core"))
+               (:file "src/vec"
                 :description "Vector similarity search via sqlite-vec extension"
-                :depends-on ("core" "simplified")))
+                :depends-on ("src/core" "src/simplified")))
 
   :in-order-to ((test-op (load-op inquisitio-tests))))
 

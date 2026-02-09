@@ -1,6 +1,10 @@
 # Inquisitio
 
-**Inquisitio** (formerly CL-SQLITE) is a Common Lisp interface to the [SQLite](https://sqlite.org/) embedded relational database engine. It provides a clean and idiomatic Lisp API for interacting with SQLite databases, supporting both high-level convenience functions and low-level prepared statement operations.
+**Inquisitio** is a Common Lisp interface to the [SQLite](https://sqlite.org/) embedded relational database engine. It provides a clean and idiomatic Lisp API for interacting with SQLite databases, supporting both high-level convenience functions and low-level prepared statement operations. Supports the Vector extensions.
+
+Library is designed by me. Written mostly by Claude. This is designed for consumption by Agents.  If you have a problem with Agent written code then this library is not for you. You can try the original [cl-sqlite](https://github.com/TeMPOraL/cl-sqlite).
+
+Your comments / feedback most welcome.
 
 The library is available under the MIT license.
 
@@ -295,13 +299,15 @@ MIT
 
 ## History from the original repo
 
+* 9 Feb 2026 - I changed the name from cl-sqlite -> Inquisitio as this fork and the original cl-sqlite had drifted apart a lot. There were some folks on Reddit who thought that my fork was the 'wrong' direction. The library was public domain. I have changed the licence to MIT and I have maintained the git history as well as the original changelog in this file. My sincere thanks go to the original developers for their efforts.
+
 Original Repo: https://github.com/TeMPOraL/cl-sqlite
 
 ### Support
 This package is written by Kalyanov Dmitry.
 This project has a cl-sqlite-devel mailing list.
 
- 
+
 ### Historic Changelog
 - 23 Jan 2009 0.1 Initial version
 - 03 Mar 2009 0.1.1 Fixed bug with access to recently freed memory during statement preparation
