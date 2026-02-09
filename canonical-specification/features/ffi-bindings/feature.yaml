@@ -1,0 +1,15 @@
+feature:
+  name: ffi-bindings
+  version: 1.0.0
+  status: implemented
+  description: Low-level CFFI bindings to the SQLite3 C API
+
+depends_on:
+  core: true
+  features: []
+
+contracts: [ffi-bindings-core]
+properties: []
+
+file_mapping:
+  - src/ffi.lisp

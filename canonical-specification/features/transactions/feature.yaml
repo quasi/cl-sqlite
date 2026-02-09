@@ -1,0 +1,15 @@
+feature:
+  name: transactions
+  version: 1.0.0
+  status: implemented
+  description: Atomic transaction support with BEGIN...COMMIT/ROLLBACK
+
+depends_on:
+  core: true
+  features: [core-operations]
+
+contracts: [transactions-core]
+properties: []
+
+file_mapping:
+  - src/core.lisp

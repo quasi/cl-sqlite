@@ -2,7 +2,7 @@
 
 **Inquisitio** is a Common Lisp interface to the [SQLite](https://sqlite.org/) embedded relational database engine. It provides a clean and idiomatic Lisp API for interacting with SQLite databases, supporting both high-level convenience functions and low-level prepared statement operations. Supports the Vector extensions.
 
-Library is designed by me. Written mostly by Claude. This is designed for consumption by Agents.  If you have a problem with Agent written code then this library is not for you. You can try the original [cl-sqlite](https://github.com/TeMPOraL/cl-sqlite).
+Library is designed by me and  implemented by Claude with my inputs. This is designed for consumption by Agents.  If you have a problem with Agent written code then this library is not for you. You can try the original [cl-sqlite](https://github.com/TeMPOraL/cl-sqlite).
 
 Your comments / feedback most welcome.
 

@@ -1,0 +1,257 @@
+# Inquisitio Verification Strategy
+
+## Integration Points
+
+integration_points:
+  - name: sqlite-c-api
+    type: external-library
+    description: SQLite3 C library (libsqlite3)
+    verification_approach: Mock-free integration tests using real SQLite
+    rationale: SQLite is stable, widely available, and fast enough for direct testing
+    risk: LOW - SQLite API is stable and well-documented
+
+  - name: cffi
+    type: external-library
+    description: Common Foreign Function Interface
+    verification_approach: Trust CFFI, test our FFI wrapper functions
+    rationale: CFFI is mature and extensively tested
+    risk: LOW - CFFI API is stable
+
+  - name: iterate
+    type: external-library
+    description: Iteration construct library
+    verification_approach: Trust iterate, test our iterate drivers
+    rationale: Iterate is mature and extensively tested
+    risk: LOW
+
+## Test Framework
+
+framework:
+  name: FiveAM
+  description: Common Lisp regression testing framework
+  run_command: (asdf:test-system :inquisitio)
+  alternative: (5am:run! 'inquisitio-tests::inquisitio-suite)
+
+## Coverage Requirements
+
+coverage:
+  unit:
+    - All exported functions must have at least one passing test
+    - All error conditions must have tests verifying they are raised
+    - All restarts must have tests verifying they work correctly
+    - Minimum coverage: 90% of exported API
+
+  integration:
+    - End-to-end scenarios: connect → create table → insert → query → close
+    - Transaction scenarios: commit, rollback, error handling
+    - Concurrent statement handling on single connection
+    - Extension loading (sqlite-vec)
+
+  security:
+    - SQL injection prevention (malicious table/column names rejected)
+    - Input validation (WHERE clause operators whitelisted)
+    - Type safety (invalid parameter types rejected)
+
+  performance:
+    - Statement cache hit rate verification
+    - Memory leak detection (connection lifecycle)
+    - BLOB handling efficiency
+
+## Test Organization
+
+test_suites:
+  - name: inquisitio-suite
+    file: tests/core-tests.lisp
+    focus: Core operations
+    tests:
+      - Database connection lifecycle
+      - Statement preparation and execution
+      - Parameter binding (positional and named)
+      - Query iteration
+      - Type conversions (NULL, INT, REAL, TEXT, BLOB)
+      - Error conditions
+      - Concurrent statements
+
+  - name: transaction-suite
+    file: tests/transaction-tests.lisp
+    focus: Transactions and BLOBs
+    tests:
+      - Transaction commit
+      - Transaction rollback
+      - BLOB storage and retrieval
+      - Error handling within transactions
+
+  - name: simplified-suite
+    file: tests/simplified-tests.lisp
+    focus: High-level CRUD interface
+    tests:
+      - create-table, drop-table
+      - insert, select, update-table, delete-from
+      - WHERE clause compilation
+      - SQL injection prevention
+      - Input validation
+
+  - name: vec-suite
+    file: tests/vec-tests.lisp
+    focus: Vector extension
+    tests:
+      - Extension loading sequence
+      - Vector table creation
+      - Vector search (k-NN)
+      - Distance functions (L2, cosine)
+      - Vector serialization (float-vector-to-blob)
+
+## Verification Modes
+
+modes:
+  unit_tests:
+    description: Fast, isolated function tests
+    run_time: < 1 second
+    when: On every file save, before commit
+
+  integration_tests:
+    description: Tests using real SQLite database (in-memory)
+    run_time: < 5 seconds
+    when: Before commit, in CI pipeline
+
+  regression_tests:
+    description: All tests (unit + integration)
+    run_time: < 10 seconds
+    when: Before merge to main, in CI pipeline
+
+## Mock-Free Testing
+
+philosophy: |
+  Inquisitio uses mock-free integration testing. We test against real SQLite
+  databases (in-memory) because:
+
+  1. SQLite is fast enough (< 5s for full test suite)
+  2. In-memory databases are isolated and reproducible
+  3. Real SQLite catches issues mocks would miss (type coercion, edge cases)
+  4. Maintains confidence that code works with actual SQLite
+
+mocking_policy:
+  sqlite_api: "NO - Always use real SQLite"
+  file_system: "YES - Use in-memory databases instead of disk"
+  network: "N/A - No network dependencies"
+  time: "RARELY - Only when testing timeout behavior"
+
+## Anti-Patterns to Avoid
+
+anti_patterns:
+  - name: Mocking SQLite
+    why_bad: Breaks the verification contract - we need to test actual SQLite behavior
+    instead: "Use in-memory databases for fast, isolated tests"
+
+  - name: Testing implementation details
+    why_bad: Makes tests brittle and couples them to internal structure
+    instead: Test public API contracts and observable behavior
+
+  - name: Shared mutable state between tests
+    why_bad: Tests become order-dependent and flaky
+    instead: "Each test creates its own in-memory database"
+
+  - name: Catching all errors generically
+    why_bad: Obscures specific failure modes
+    instead: Test specific error conditions (sqlite-error, sqlite-constraint-error)
+
+  - name: Testing without cleanup
+    why_bad: Can leak connections or statements
+    instead: Use with-open-database and proper finalization
+
+## Confidence Thresholds
+
+confidence_levels:
+  high_confidence:
+    definition: All tests pass, coverage > 90%, no known issues
+    requirements:
+      - All exported functions tested
+      - All error paths tested
+      - All restarts tested
+      - SQL injection tests pass
+      - No memory leaks detected
+
+  medium_confidence:
+    definition: Core functionality tested, some edge cases missing
+    requirements:
+      - Core API tested
+      - Main error paths tested
+      - Basic integration scenarios pass
+
+  low_confidence:
+    definition: Basic smoke tests only
+    requirements:
+      - Can connect to database
+      - Can execute simple query
+      - Can close cleanly
+
+current_status: HIGH_CONFIDENCE
+rationale: |
+  - Comprehensive test suite covering all features
+  - Mock-free integration testing with real SQLite
+  - Security tests for SQL injection prevention
+  - Error handling and restart tests
+  - Transaction and BLOB tests
+  - Vector extension tests
+
+## Continuous Integration
+
+ci_requirements:
+  - Test suite must pass on: SBCL, CCL, ECL
+  - Tests run on every commit to main
+  - Tests run on every pull request
+  - No warnings during compilation
+  - No deprecation warnings from dependencies
+
+## Smoke Test Endpoints
+
+smoke_tests:
+  description: |
+    Minimal tests to verify basic functionality. Run these after any change
+    to the C API bindings or core infrastructure.
+
+  tests:
+    - test: connect-and-disconnect
+      steps:
+        - '(connect ":memory:")'
+        - (disconnect db)
+      expected: No errors
+
+    - test: simple-query
+      steps:
+        - '(connect ":memory:")'
+        - '(execute-non-query db "CREATE TABLE t (x INTEGER)")'
+        - '(execute-non-query db "INSERT INTO t VALUES (1)")'
+        - '(execute-single db "SELECT x FROM t")'
+      expected: Returns 1
+
+    - test: transaction-commit
+      steps:
+        - (with-transaction db ...)
+      expected: Changes persisted
+
+    - test: error-handling
+      steps:
+        - (execute-non-query db "INVALID SQL")
+      expected: sqlite-error raised
+
+## Test Execution
+
+execution:
+  command: (asdf:test-system :inquisitio)
+  expected_output: |
+    Running test suite INQUISITIO-SUITE
+     Running test CONNECT-DISCONNECT ✓
+     Running test SIMPLE-QUERY ✓
+     ...
+     Did XX checks.
+        Pass: XX (100%)
+        Skip: 0 ( 0%)
+        Fail: 0 ( 0%)
+
+  failure_handling:
+    - Read test output carefully
+    - Identify failing test
+    - Run individual test: (5am:run! 'test-name)
+    - Fix issue
+    - Re-run full suite before committing

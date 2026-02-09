@@ -1,0 +1,15 @@
+feature:
+  name: conditions
+  version: 1.0.0
+  status: implemented
+  description: Condition hierarchy for SQLite errors with structured context
+
+depends_on:
+  core: true
+  features: []
+
+contracts: [conditions-core]
+properties: []
+
+file_mapping:
+  - src/core.lisp
