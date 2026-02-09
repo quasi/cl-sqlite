@@ -1,8 +1,8 @@
 # Inquisitio
 
-**Inquisitio** is a Common Lisp interface to the [SQLite](https://sqlite.org/) embedded relational database engine. It provides a clean and idiomatic Lisp API for interacting with SQLite databases, supporting both high-level convenience functions and low-level prepared statement operations. Supports the Vector extensions.
+**Inquisitio** is a Common Lisp interface to the [SQLite](https://sqlite.org/) embedded relational database engine. It provides a clean and idiomatic Lisp API for interacting with SQLite databases, supporting both high-level convenience functions and low-level prepared statement operations. Supports the **Vector extensions**.
 
-Library is designed by me and  implemented by Claude with my inputs. This is designed for consumption by Agents.  If you have a problem with Agent written code then this library is not for you. You can try the original [cl-sqlite](https://github.com/TeMPOraL/cl-sqlite).
+> This Library is designed by me and  implemented by Claude with my inputs. This is designed for consumption by Agents as well as Humans.  If you have a problem with Agent written code then this library is *not* for you. You can try the original [cl-sqlite](https://github.com/TeMPOraL/cl-sqlite).
 
 Your comments / feedback most welcome.
 
@@ -22,7 +22,14 @@ The library is available under the MIT license.
 
 You can load Inquisitio via ASDF (the `:sqlite` system name still works for backward compatibility):
 
+```bash
+cd ~/.quicklisp/local-projects/
+git clone https://github.com/quasi/inquisitio.git
+```
+
 ```lisp
+(ql:quickload :inquisitio)
+;; or
 (asdf:load-system :inquisitio)
 ;; or for backward compatibility:
 (asdf:load-system :sqlite)
@@ -30,6 +37,7 @@ You can load Inquisitio via ASDF (the `:sqlite` system name still works for back
 
 **Prerequisites:**
 You need `sqlite3` installed on your system.
+
 *   **Ubuntu/Debian**: `sudo apt-get install libsqlite3-dev`
 *   **macOS**: `brew install sqlite`
 *   **Windows**: Ensure `sqlite3.dll` is in your PATH.
