@@ -1,6 +1,6 @@
 # Tutorial: CRUD Operations
 
-Learn the basics of Create, Read, Update, Delete operations with CL-SQLite.
+Learn the basics of Create, Read, Update, Delete operations with Inquisitio.
 
 ## Prerequisites
 

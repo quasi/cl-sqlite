@@ -1,6 +1,6 @@
 # Inquisitio Reference Manual
 
-This document provides a comprehensive reference for the Inquisitio library (formerly cl-sqlite). It covers the public API in the `inquisitio` package (also available as `sqlite` for backward compatibility) and the low-level bindings in the `inquisitio.ffi` package (also available as `sqlite-ffi`).
+This document provides a comprehensive reference for the Inquisitio library (formerly Inquisitio). It covers the public API in the `inquisitio` package (also available as `sqlite` for backward compatibility) and the low-level bindings in the `inquisitio.ffi` package (also available as `sqlite-ffi`).
 
 ## Package `inquisitio` (nickname: `sqlite`)
 
@@ -200,7 +200,7 @@ Represents a prepared statement.
 **Syntax:** `(finalize-statement statement)`
 **Returns:** `nil`
 
-Finalizes the statement. In `cl-sqlite`, this resets the statement and returns it to the cache for reuse, rather than destroying it immediately.
+Finalizes the statement. In `Inquisitio`, this resets the statement and returns it to the cache for reuse, rather than destroying it immediately.
 
 #### `step-statement`
 **Syntax:** `(step-statement statement)`
@@ -266,7 +266,7 @@ Wraps `body` inside a transaction (`BEGIN TRANSACTION` ... `COMMIT`/`ROLLBACK`).
 
 ### Iterate Integration
 
-`cl-sqlite` integrates with the `iterate` library to allow iterating over query results.
+`Inquisitio` integrates with the `iterate` library to allow iterating over query results.
 
 #### `in-sqlite-query`
 **Usage:** `(iter (for (var1 var2 ...) in-sqlite-query sql-string on-database db [with-parameters params]))`

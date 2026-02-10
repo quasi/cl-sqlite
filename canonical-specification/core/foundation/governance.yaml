@@ -25,7 +25,7 @@ principles:
 
   - id: BACKWARD_COMPATIBILITY
     name: Backward Compatibility
-    description: Maintain compatibility with cl-sqlite consumers through package nicknames and stable APIs
+    description: Maintain compatibility with Inquisitio consumers through package nicknames and stable APIs
     rationale: Breaking existing code without warning violates user trust
 
 ## Architecture Rules
@@ -122,7 +122,7 @@ safety:
 ## Backward Compatibility
 
 compatibility:
-  policy: Maintain backward compatibility with cl-sqlite consumers
+  policy: Maintain backward compatibility with Inquisitio consumers
 
   package_nicknames:
     - inquisitio → sqlite

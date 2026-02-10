@@ -1,10 +1,10 @@
-# Architecture Guide: Understanding CL-SQLite
+# Architecture Guide: Understanding Inquisitio
 
-This guide explains the design principles and architecture of CL-SQLite.
+This guide explains the design principles and architecture of Inquisitio.
 
 ## Design Philosophy
 
-CL-SQLite follows these core principles:
+Inquisitio follows these core principles:
 
 1. **Layered APIs:** Users choose their abstraction level
 2. **Lisp First:** Syntax and idioms feel native to Lisp
@@ -14,7 +14,7 @@ CL-SQLite follows these core principles:
 
 ## API Layers
 
-CL-SQLite provides four API layers. Each builds on the previous, and you can mix them:
+Inquisitio provides four API layers. Each builds on the previous, and you can mix them:
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -110,7 +110,7 @@ FINALIZE
 
 ## Statement Caching
 
-CL-SQLite automatically caches prepared statements. This is transparent but important:
+Inquisitio automatically caches prepared statements. This is transparent but important:
 
 ```common-lisp
 ;; First execution: Parse SQL (expensive)
@@ -131,7 +131,7 @@ CL-SQLite automatically caches prepared statements. This is transparent but impo
 
 ## Type Mapping
 
-CL-SQLite maps between Lisp types and SQLite types automatically:
+Inquisitio maps between Lisp types and SQLite types automatically:
 
 ### Lisp → SQLite
 
@@ -253,7 +253,7 @@ The simplified API compiles s-expression WHERE clauses to SQL:
 
 ## Extension Support
 
-CL-SQLite supports SQLite extensions (like sqlite-vec for vector search):
+Inquisitio supports SQLite extensions (like sqlite-vec for vector search):
 
 ```common-lisp
 (with-open-database (db "/tmp/vectors.db")
@@ -285,7 +285,7 @@ sqlite.lisp              ← Core (connections, statements)
 
 ## Resource Management
 
-CL-SQLite uses Lisp's standard resource management patterns:
+Inquisitio uses Lisp's standard resource management patterns:
 
 ### Automatic (Macros)
 
@@ -315,7 +315,7 @@ CL-SQLite uses Lisp's standard resource management patterns:
 
 ## Testing Strategy
 
-CL-SQLite tests follow these patterns:
+Inquisitio tests follow these patterns:
 
 1. **Unit tests:** Individual functions (FFI, cache, type conversion)
 2. **Integration tests:** Full workflows (CRUD, transactions)
@@ -331,7 +331,7 @@ Fixed at 16 entries. If your application uses >16 different queries, oldest quer
 
 ### No Nested Transactions
 
-SQLite limitation, not CL-SQLite:
+SQLite limitation, not Inquisitio:
 
 ```common-lisp
 (with-transaction (db)

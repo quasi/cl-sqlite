@@ -2,7 +2,7 @@
 
 # SQL Injection and the Simplified Interface
 
-This document examines how CL-SQLITE's simplified interface (`simple.lisp`) handles SQL injection, what we hardened, and why embedded SQLite has a different threat model than web-facing databases.
+This document examines how Inquisitio's simplified interface (`simple.lisp`) handles SQL injection, what we hardened, and why embedded SQLite has a different threat model than web-facing databases.
 
 ## Background
 

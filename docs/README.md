@@ -1,10 +1,10 @@
-# CL-SQLite Documentation
+# Inquisitio Documentation
 
-Welcome to CL-SQLite — a Common Lisp interface to SQLite databases.
+Welcome to Inquisitio — a Common Lisp interface to SQLite databases.
 
-## What is CL-SQLite?
+## What is Inquisitio?
 
-CL-SQLite provides a Lispy way to interact with SQLite databases. It offers multiple API layers, from simple high-level functions for common CRUD operations to low-level prepared statement access for maximum control.
+Inquisitio provides a Lispy way to interact with SQLite databases. It offers multiple API layers, from simple high-level functions for common CRUD operations to low-level prepared statement access for maximum control.
 
 ## Quick Start
 
@@ -162,8 +162,8 @@ For semantic search and embeddings:
 ## Getting Help
 
 - **Questions?** See [FAQ](./faq.md) or [Troubleshooting](./troubleshooting.md)
-- **Bug reports:** [GitHub Issues](https://github.com/quasi/cl-sqlite/issues)
-- **Source code:** [GitHub Repository](https://github.com/quasi/cl-sqlite)
+- **Bug reports:** [GitHub Issues](https://github.com/quasi/Inquisitio/issues)
+- **Source code:** [GitHub Repository](https://github.com/quasi/Inquisitio)
 
 ## Next Steps
 
