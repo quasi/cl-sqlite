@@ -53,6 +53,7 @@
            :select
            :update-table
            :delete-from
+           :compile-where
            :normalize-name))
 
 (in-package :inquisitio)
