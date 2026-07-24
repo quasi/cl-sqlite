@@ -15,6 +15,17 @@
 (test test-connect
   (with-open-database (db ":memory:")))
 
+(test test-extension-loading-is-available
+  "The linked SQLite must support extension loading, or vec.lisp cannot work.
+Apple's system libsqlite3 omits sqlite3_enable_load_extension entirely, so this
+fails unless a capable build (e.g. Homebrew's) is selected at load time."
+  (with-open-database (db ":memory:")
+    (finishes (enable-load-extension db t))
+    (finishes (enable-load-extension db nil))))
+
+(test test-library-version-is-introspectable
+  (is (stringp (sqlite-library-version))))
+
 (test test-disconnect-with-statements
   (finishes
     (with-open-database (db ":memory:")

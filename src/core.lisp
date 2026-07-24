@@ -20,6 +20,8 @@
   (:export :handle-lock
            :with-database-lock
            :sqlite-threadsafe)
+  ;; Linked-library introspection
+  (:export :sqlite-library-version)
   ;; Statement lifecycle
   (:export :sqlite-statement
            :prepare-statement
@@ -172,6 +174,12 @@ atomic with respect to other threads when a transaction is not wanted;
 WITH-TRANSACTION already takes this lock for you."
   `(bt:with-recursive-lock-held ((handle-lock ,db))
      ,@body))
+
+(defun sqlite-library-version ()
+  "Version string of the libsqlite3 that was actually loaded, e.g. \"3.53.0\".
+Which build that is depends on the platform search in INQUISITIO.FFI and on
+INQUISITIO_SQLITE3_LIBRARY; use this to check rather than assume."
+  (inquisitio.ffi:sqlite3-libversion))
 
 (defun sqlite-threadsafe ()
   "Return the threading mode the linked SQLite library was compiled with:

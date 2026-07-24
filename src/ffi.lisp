@@ -32,7 +32,9 @@
            :destructor-transient
            :destructor-static
            :sqlite3-last-insert-rowid
+           :sqlite3-libversion
            :sqlite3-threadsafe
+           :*sqlite3-library-environment-variable*
            :sqlite3-open-v2
            :+sqlite-open-readonly+
            :+sqlite-open-readwrite+
@@ -85,12 +87,35 @@
 
 ;;; Library loading
 
+;; On macOS the system libsqlite3 is built with SQLITE_OMIT_LOAD_EXTENSION:
+;; sqlite3_enable_load_extension and sqlite3_load_extension are absent from the
+;; binary altogether, so extension loading — and with it everything in
+;; src/vec.lisp — cannot work against it. Homebrew's build has them, so prefer
+;; it when it is installed and fall back to Apple's otherwise. Those two
+;; symbols are the only ones of the ~60 bound here that Apple's build lacks, so
+;; the fallback is fully functional for everything except extensions.
 (define-foreign-library sqlite3-lib
-  (:darwin (:default "libsqlite3"))
+  (:darwin (:or "/opt/homebrew/opt/sqlite/lib/libsqlite3.dylib" ; Homebrew, Apple Silicon
+                "/usr/local/opt/sqlite/lib/libsqlite3.dylib"    ; Homebrew, Intel
+                (:default "libsqlite3")))                       ; Apple's, no extensions
   (:unix (:or "libsqlite3.so.0" "libsqlite3.so"))
   (t (:or (:default "libsqlite3") (:default "sqlite3"))))
 
-(use-foreign-library sqlite3-lib)
+(defparameter *sqlite3-library-environment-variable* "INQUISITIO_SQLITE3_LIBRARY"
+  "Environment variable naming a specific libsqlite3 to load, overriding the
+search in SQLITE3-LIB. Set it to an absolute path when you need a build the
+default search will not find. It is read once, when this file is loaded, so it
+must be set before the system is loaded; setting it afterwards does nothing.")
+
+(let ((override (uiop:getenv *sqlite3-library-environment-variable*)))
+  (if override
+      ;; An explicit request that cannot be honoured should fail loudly rather
+      ;; than fall back to a library the caller did not ask for.
+      (load-foreign-library override)
+      (use-foreign-library sqlite3-lib)))
+
+(defcfun sqlite3-libversion :string
+  "Version string of the libsqlite3 that actually got loaded.")
 
 ;;; Error codes
 

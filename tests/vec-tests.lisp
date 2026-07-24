@@ -4,12 +4,30 @@
 
 (defvar *vec-db* nil)
 
+(defun vec-extension-path ()
+  "Namestring of the sqlite-vec loadable extension, or NIL when it is absent.
+The binary is deliberately not in the repository — libs/ is gitignored. Fetch a
+release from https://github.com/asg017/sqlite-vec/releases and drop vec0.dylib
+\(macOS) or vec0.so (Linux) into libs/ to enable these tests."
+  (some (lambda (name)
+          (let ((path (asdf:system-relative-pathname
+                       :inquisitio (concatenate 'string "libs/" name))))
+            (when (probe-file path) (namestring path))))
+        #+darwin '("vec0.dylib" "vec0.so")
+        #-darwin '("vec0.so" "vec0.dylib")))
+
 (defmacro with-vec-test-db (&body body)
-  `(with-open-database (*vec-db* ":memory:")
-     (enable-load-extension *vec-db* t)
-     (let ((extension-path (merge-pathnames "libs/vec0.so" (uiop:getcwd))))
-       (load-extension *vec-db* (namestring extension-path) (cffi:null-pointer)))
-     ,@body))
+  "Run BODY against an in-memory database with sqlite-vec loaded.
+Skips rather than fails when the extension is not installed locally, so that a
+missing optional binary does not read as a broken library."
+  (let ((path (gensym "EXTENSION-PATH-")))
+    `(let ((,path (vec-extension-path)))
+       (if (null ,path)
+           (skip "sqlite-vec extension not installed; see VEC-EXTENSION-PATH for how to enable these tests")
+           (with-open-database (*vec-db* ":memory:")
+             (enable-load-extension *vec-db* t)
+             (load-extension *vec-db* ,path (cffi:null-pointer))
+             ,@body)))))
 
 (test create-vector-table-test
   (with-vec-test-db

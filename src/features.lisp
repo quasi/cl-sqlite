@@ -57,4 +57,5 @@
   :belongs-to inquisitio
   :purpose "Vector similarity search via the sqlite-vec extension"
   :goals ((:g1 "Provide Lisp-friendly wrappers for sqlite-vec functions"))
-  :assumptions ((:a1 "The vec0 extension shared library is available for loading")))
+  :assumptions ((:a1 "The vec0 extension shared library is available for loading; it is not bundled, and libs/ is gitignored")
+                (:a2 "The linked libsqlite3 exposes sqlite3_enable_load_extension — Apple's system build does not, which is why the darwin library search prefers Homebrew's")))

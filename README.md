@@ -335,8 +335,46 @@ such a build do not share a handle between threads, whatever the rest of this
 section says. `1` and `2` are both fine — Inquisitio passes `SQLITE_OPEN_FULLMUTEX`
 when opening, which selects serialized mode per connection in either case.
 
-This matters in practice: the system libsqlite3 on macOS 15 reports `2`, so the
-`FULLMUTEX` flag is doing real work there, not making a point.
+This matters in practice rather than in principle. On macOS 15 the two builds
+you are likely to link report different modes — Homebrew's 3.53.0 reports `1`,
+Apple's system 3.51.0 reports `2` — so the connection's mode is not something
+you can assume from the platform. Running the shared-handle test suite against
+a connection opened with `NOMUTEX` instead, with every Lisp-side lock still in
+place, segfaults inside libsqlite3; the flag is load-bearing.
+
+## Which SQLite gets linked
+
+Inquisitio does not bundle SQLite; it loads whatever the platform search finds.
+On macOS it prefers Homebrew's build over Apple's, because **Apple's system
+libsqlite3 is compiled with `SQLITE_OMIT_LOAD_EXTENSION`** — the symbols
+`sqlite3_enable_load_extension` and `sqlite3_load_extension` are absent from the
+binary entirely, so `load-extension` and everything in `vec.lisp` cannot work
+against it. Those are the only two of the ~60 bound C functions Apple's build
+lacks, so the fallback is fully functional for everything except extensions.
+
+Search order on macOS:
+
+1. `/opt/homebrew/opt/sqlite/lib/libsqlite3.dylib` (Homebrew, Apple Silicon)
+2. `/usr/local/opt/sqlite/lib/libsqlite3.dylib` (Homebrew, Intel)
+3. the system `libsqlite3` — works, but without extension loading
+
+`brew install sqlite` is enough to get the first. To point at a specific build,
+set `INQUISITIO_SQLITE3_LIBRARY` to an absolute path before the system is
+loaded; it overrides the search entirely.
+
+Check what you actually got:
+
+```lisp
+(sqlite-library-version)  ; => "3.53.0"
+(sqlite-threadsafe)       ; => 1
+```
+
+### Vector search
+
+`vec.lisp` needs the [sqlite-vec](https://github.com/asg017/sqlite-vec) loadable
+extension, which is not bundled either. Download a release and place `vec0.dylib`
+(macOS) or `vec0.so` (Linux) in `libs/`. The vector tests skip themselves when it
+is absent rather than failing.
 
 ## API Reference
 
@@ -352,6 +390,11 @@ This matters in practice: the system libsqlite3 on macOS 15 reports `2`, so the
 *   **`with-database-lock`** `((db) &body body)`: Runs `body` holding `db`'s recursive handle lock, excluding other threads from the handle.
 *   **`handle-lock`** `(db)`: The recursive lock itself, should you need to compose with it.
 *   **`sqlite-threadsafe`** `()`: The `SQLITE_THREADSAFE` mode of the linked SQLite library (0, 1, or 2).
+
+### Linked Library
+
+*   **`sqlite-library-version`** `()`: Version string of the libsqlite3 actually loaded, e.g. `"3.53.0"`.
+*   **`INQUISITIO_SQLITE3_LIBRARY`** (environment variable): absolute path to a specific libsqlite3, overriding the platform search.
 
 ### Query Execution
 
@@ -402,6 +445,10 @@ To run the test suite, you need to load the `:sqlite-tests` system.
   - Connections open with `sqlite3_open_v2` + `SQLITE_OPEN_FULLMUTEX`
   - `connect` defaults to a 5-second busy timeout (`*default-busy-timeout*`); pass `:busy-timeout nil` for the old fail-fast behaviour
   - New: `with-database-lock`, `handle-lock`, `sqlite-threadsafe`
+- Jul 2026 2.3 Link a SQLite that can actually load extensions
+  - On macOS, prefer Homebrew's libsqlite3 over Apple's, which omits `sqlite3_enable_load_extension` and so cannot load `vec0` at all
+  - `INQUISITIO_SQLITE3_LIBRARY` overrides the search; `sqlite-library-version` reports what was loaded
+  - Vector tests locate the extension via `asdf:system-relative-pathname` (not the process CWD), accept `.dylib` as well as `.so`, and skip instead of failing when it is not installed
 - Feb 2026 2.1 Input validation hardening for simplified interface ([details](docs/sql-injection-analysis.md))
   - `normalize-name` validates identifiers and converts hyphens to underscores
   - ORDER BY direction allowlisted to `:asc` / `:desc`
