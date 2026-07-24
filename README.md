@@ -369,12 +369,46 @@ Check what you actually got:
 (sqlite-threadsafe)       ; => 1
 ```
 
-### Vector search
+### Installing the sqlite-vec extension (optional)
 
 `vec.lisp` needs the [sqlite-vec](https://github.com/asg017/sqlite-vec) loadable
-extension, which is not bundled either. Download a release and place `vec0.dylib`
-(macOS) or `vec0.so` (Linux) in `libs/`. The vector tests skip themselves when it
-is absent rather than failing.
+extension. It is **optional** and deliberately not bundled: it is a
+platform-specific third-party binary, and `libs/` is gitignored so it never ends
+up in the repository. Everything except vector search works without it.
+
+Inquisitio looks for `libs/vec0.dylib` or `libs/vec0.so` relative to the system's
+own directory (not your working directory). To install it, download the
+`loadable` asset for your platform from the
+[releases page](https://github.com/asg017/sqlite-vec/releases) and unpack it there:
+
+```bash
+cd /path/to/inquisitio        # the directory holding inquisitio.asd
+mkdir -p libs
+
+VERSION=0.1.9
+# Pick the asset matching your platform:
+#   macos-aarch64 | macos-x86_64 | linux-x86_64 | linux-aarch64
+PLATFORM=macos-aarch64
+
+curl -L -o /tmp/sqlite-vec.tar.gz \
+  "https://github.com/asg017/sqlite-vec/releases/download/v${VERSION}/sqlite-vec-${VERSION}-loadable-${PLATFORM}.tar.gz"
+tar xzf /tmp/sqlite-vec.tar.gz -C libs
+ls libs   # => vec0.dylib (macOS) or vec0.so (Linux)
+```
+
+Remember that this also needs a libsqlite3 that can load extensions at all —
+on macOS that means Homebrew's, not Apple's (see above).
+
+Verify it took:
+
+```lisp
+(ql:quickload :inquisitio-tests)
+(inquisitio-tests:run-all-sqlite-tests)
+```
+
+The three vector tests report as **skipped** when the extension is missing and
+**pass** once it is installed. A missing optional binary is not a broken library,
+so they never fail on its account.
 
 ## API Reference
 
@@ -436,6 +470,13 @@ To run the test suite, you need to load the `:sqlite-tests` system.
 (ql:quickload :sqlite-tests)
 (sqlite-tests:run-all-sqlite-tests)
 ```
+
+A full run is **91 checks**. Three of them are the vector tests, which report as
+skipped unless the optional [sqlite-vec extension](#installing-the-sqlite-vec-extension-optional)
+is installed — that is expected, not a failure.
+
+The concurrency tests spawn real threads against a single shared handle, so they
+need a Lisp built with thread support (they are guarded by `#+thread-support`).
 
 ## Changelog
 - Jul 2026 2.2 Thread safety
