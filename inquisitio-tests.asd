@@ -10,5 +10,6 @@
   :components ((:module "tests"
                 :components ((:file "core-tests")
                              (:file "transaction-tests")
+                             (:file "thread-safety-tests")
                              (:file "simplified-tests")
                              (:file "vec-tests")))))

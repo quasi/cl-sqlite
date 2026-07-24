@@ -5,11 +5,15 @@
   :goals ((:g1 "Provide complete SQLite API coverage through CFFI bindings")
           (:g2 "Support both low-level prepared statements and high-level query functions")
           (:g3 "Offer a simplified s-expression-based CRUD interface")
-          (:g4 "Enable vector similarity search via sqlite-vec extension"))
+          (:g4 "Enable vector similarity search via sqlite-vec extension")
+          (:g5 "Permit a connection handle to be shared between threads"))
   :constraints ((:c1 "Must maintain backward compatibility with :sqlite package nickname")
-                (:c2 "Must not leak SQLite resources on error paths"))
+                (:c2 "Must not leak SQLite resources on error paths")
+                (:c3 "Must guard every mutation of Lisp-side connection state with the per-handle recursive lock — callers are not required to synchronize")
+                (:c4 "A SQLITE-STATEMENT object remains single-thread; only the handle is shareable"))
   :assumptions ((:a1 "SQLite3 shared library is available on the system")
-                (:a2 "CFFI can locate and load the SQLite3 library")))
+                (:a2 "CFFI can locate and load the SQLite3 library")
+                (:a3 "The linked SQLite3 is built with SQLITE_THREADSAFE 1 or 2, so SQLITE_OPEN_FULLMUTEX can select serialized mode per connection; SQLITE-THREADSAFE lets callers verify this rather than assume it")))
 
 (telos:deffeature inquisitio-ffi
   :belongs-to inquisitio
@@ -21,7 +25,8 @@
   :belongs-to inquisitio
   :purpose "MRU cache for prepared statements to avoid repeated compilation"
   :goals ((:g1 "Reduce overhead of repeated query preparation"))
-  :constraints ((:c1 "Must properly finalize statements when evicting from cache")))
+  :constraints ((:c1 "Must properly finalize statements when evicting from cache")
+                (:c2 "Every cache operation must run under CACHE-LOCK, including the destructor call, so the owner can share one lock with the cache and avoid lock ordering")))
 
 (telos:deffeature inquisitio-conditions
   :belongs-to inquisitio
@@ -36,7 +41,9 @@
           (:g2 "Support positional and named parameter binding")
           (:g3 "Offer multiple result-shape functions (list, single, multi-value)"))
   :constraints ((:c1 "Must finalize statements even on error paths")
-                (:c2 "Must support iterate macro drivers for query iteration")))
+                (:c2 "Must support iterate macro drivers for query iteration")
+                (:c3 "WITH-TRANSACTION must hold the handle lock for the whole body — BEGIN/COMMIT/ROLLBACK are connection-global, so per-call locking is not sufficient")
+                (:c4 "Nested WITH-TRANSACTION must use SAVEPOINT/RELEASE rather than a second BEGIN")))
 
 (telos:deffeature inquisitio-simplified
   :belongs-to inquisitio

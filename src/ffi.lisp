@@ -32,7 +32,14 @@
            :destructor-transient
            :destructor-static
            :sqlite3-last-insert-rowid
+           :sqlite3-threadsafe
            :sqlite3-open-v2
+           :+sqlite-open-readonly+
+           :+sqlite-open-readwrite+
+           :+sqlite-open-create+
+           :+sqlite-open-uri+
+           :+sqlite-open-nomutex+
+           :+sqlite-open-fullmutex+
            :sqlite3-exec
            :sqlite3-get-table
            :sqlite3-free-table
@@ -295,13 +302,28 @@
 (defcfun sqlite3-last-insert-rowid :int64
   (db p-sqlite3))
 
+;;; Threading mode
+
+(defcfun sqlite3-threadsafe :int
+  "Return the SQLITE_THREADSAFE value the library was compiled with:
+0 = single-thread, 1 = serialized, 2 = multi-thread.")
+
 ;;; Alternative open
+
+;; Flags for sqlite3_open_v2. Only the ones this library has a use for.
+(defconstant +sqlite-open-readonly+  #x00000001)
+(defconstant +sqlite-open-readwrite+ #x00000002)
+(defconstant +sqlite-open-create+    #x00000004)
+(defconstant +sqlite-open-uri+       #x00000040)
+(defconstant +sqlite-open-nomutex+   #x00008000)
+(defconstant +sqlite-open-fullmutex+ #x00010000)
 
 (defcfun sqlite3-open-v2 error-code
   (filename :string)
   (ppdb (:pointer p-sqlite3))
   (flags :int)
-  (zVfs :string))
+  ;; const char *zVfs, may be NULL — a plain :pointer so NIL need not be coerced.
+  (zVfs :pointer))
 
 ;;; Exec and get-table
 

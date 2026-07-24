@@ -17,6 +17,7 @@ The library is available under the MIT license.
 *   **Iterate Integration**: Custom drivers for the [Iterate](https://common-lisp.net/project/iterate/) library for efficient looping over query results.
 *   **Prepared Statements**: Full control over statement lifecycle for performance-critical code.
 *   **In-Memory Databases**: Easy creation of in-memory databases for testing or temporary storage.
+*   **Thread Safe**: A connection handle may be shared between threads. See [Threading](#threading).
 
 ## Installation
 
@@ -186,6 +187,24 @@ Wrap your operations in `with-transaction`. The transaction is automatically com
   (execute-non-query *db* "INSERT INTO logs (message) VALUES (?)" "Ages updated"))
 ```
 
+`with-transaction` nests. The outermost form uses `BEGIN`/`COMMIT`/`ROLLBACK`;
+inner forms use `SAVEPOINT`/`RELEASE`/`ROLLBACK TO`, so an inner failure discards
+only the inner scope:
+
+```lisp
+(with-transaction *db*
+  (execute-non-query *db* "INSERT INTO logs (message) VALUES (?)" "starting")
+  (ignore-errors
+    (with-transaction *db*                      ; a nested savepoint
+      (execute-non-query *db* "INSERT INTO logs (message) VALUES (?)" "attempt")
+      (error "this scope fails")))              ; only "attempt" is rolled back
+  (execute-non-query *db* "INSERT INTO logs (message) VALUES (?)" "done"))
+;; "starting" and "done" are committed.
+```
+
+An error escaping the *outer* form still discards everything, released inner
+savepoints included.
+
 ### Using Iterate
 
 If you use the `iterate` library, Inquisitio provides a driver for iterating over query results efficiently without loading everything into memory.
@@ -245,13 +264,94 @@ Binary data (BLOBs) are handled as `(vector (unsigned-byte 8))`.
 ;; => #(1 2 3 4 5)
 ```
 
+## Threading
+
+**A `sqlite-handle` may be shared between threads.** Inquisitio guards its own
+state, so no individual call needs a lock of your own.
+
+What that means precisely:
+
+| Concern | Who handles it |
+|---|---|
+| The prepared-statement cache and the handle's statement list | Inquisitio, via a recursive per-handle lock |
+| Two threads calling `execute-*` on one handle at the same time | SQLite — connections are opened with `SQLITE_OPEN_FULLMUTEX` |
+| `BEGIN`/`COMMIT`/`ROLLBACK` interleaving between threads | `with-transaction` holds the per-handle lock for its whole body |
+| A `sqlite-statement` object shared between threads | **You.** Statements are not safe to use from two threads at once |
+| A *sequence* of calls that depends on connection-global state | **You**, with `with-database-lock` |
+
+That last row is the sharp edge. `last-insert-rowid` reads connection-global
+state, so on a shared handle another thread's `INSERT` can land between yours
+and your read:
+
+```lisp
+;; WRONG on a shared handle — the id may belong to another thread's insert
+(execute-non-query *db* "INSERT INTO users (name) VALUES (?)" "alice")
+(last-insert-rowid *db*)
+
+;; Right
+(with-database-lock (*db*)
+  (execute-non-query *db* "INSERT INTO users (name) VALUES (?)" "alice")
+  (last-insert-rowid *db*))
+```
+
+The same applies to any pair of calls where the second reads what the first
+established — including `enable-load-extension` / `load-extension`.
+
+### Transactions serialize per handle
+
+`BEGIN`, `COMMIT` and `ROLLBACK` are connection-global in SQLite: without
+exclusion, one thread's `ROLLBACK` silently destroys another thread's committed
+work. `with-transaction` therefore holds the handle's lock for the entire body,
+so **only one transaction runs on a handle at a time, and every other thread's
+operation on that handle waits for it.** That is a deliberate trade: correctness
+over concurrency. If it is too coarse for your workload, give each thread its own
+connection — separate handles do not contend on a Lisp lock, only on SQLite's own
+file locking (see `*default-busy-timeout*` below).
+
+Beware the usual hazard: if a transaction body blocks on something another thread
+needs, you can deadlock. Keep transaction bodies short and free of foreign locks.
+
+### Making several statements atomic without a transaction
+
+```lisp
+(with-database-lock (*db*)
+  (let ((id (execute-single *db* "SELECT MAX(id) FROM t")))
+    (execute-non-query *db* "INSERT INTO t (id) VALUES (?)" (1+ id))))
+```
+
+The lock is recursive, so any Inquisitio call — including `with-transaction` — may
+appear inside the body.
+
+### Checking the linked library
+
+```lisp
+(sqlite-threadsafe)  ; => 0 single-thread, 1 serialized, 2 multi-thread
+```
+
+This reports the `SQLITE_THREADSAFE` value the *linked* libsqlite3 was compiled
+with, which is not something Inquisitio can choose for you. If it returns `0`,
+SQLite's mutexes were compiled out and no `open_v2` flag can bring them back: on
+such a build do not share a handle between threads, whatever the rest of this
+section says. `1` and `2` are both fine — Inquisitio passes `SQLITE_OPEN_FULLMUTEX`
+when opening, which selects serialized mode per connection in either case.
+
+This matters in practice: the system libsqlite3 on macOS 15 reports `2`, so the
+`FULLMUTEX` flag is doing real work there, not making a point.
+
 ## API Reference
 
 ### Connection Management
 
-*   **`connect`** `(path &key busy-timeout)`: Connects to the database at `path`. Use `":memory:"` for an in-memory DB.
+*   **`connect`** `(path &key busy-timeout)`: Connects to the database at `path`. Use `":memory:"` for an in-memory DB. `busy-timeout` is in milliseconds and defaults to `*default-busy-timeout*`; pass `nil` to fail immediately on a locked database.
 *   **`disconnect`** `(handle)`: Closes the database connection.
 *   **`with-open-database`** `((var path &key busy-timeout) &body body)`: Context manager for database connections.
+*   **`*default-busy-timeout*`**: Milliseconds `connect` waits on a locked database when `:busy-timeout` is not supplied. Defaults to `5000`.
+
+### Concurrency
+
+*   **`with-database-lock`** `((db) &body body)`: Runs `body` holding `db`'s recursive handle lock, excluding other threads from the handle.
+*   **`handle-lock`** `(db)`: The recursive lock itself, should you need to compose with it.
+*   **`sqlite-threadsafe`** `()`: The `SQLITE_THREADSAFE` mode of the linked SQLite library (0, 1, or 2).
 
 ### Query Execution
 
@@ -265,7 +365,7 @@ Binary data (BLOBs) are handled as `(vector (unsigned-byte 8))`.
 
 ### Transactions
 
-*   **`with-transaction`** `(db &body body)`: Executes body within a transaction. Commits on success, rolls back on error.
+*   **`with-transaction`** `(db &body body)`: Executes body within a transaction. Commits on success, rolls back on error. Nests via `SAVEPOINT`. Holds the handle lock for the whole body — see [Threading](#threading).
 
 ### Prepared Statements
 
@@ -295,6 +395,13 @@ To run the test suite, you need to load the `:sqlite-tests` system.
 ```
 
 ## Changelog
+- Jul 2026 2.2 Thread safety
+  - A `sqlite-handle` may now be shared between threads; see [Threading](#threading)
+  - Statement cache and statement list guarded by a recursive per-handle lock
+  - `with-transaction` holds that lock for its body, and nests via `SAVEPOINT`
+  - Connections open with `sqlite3_open_v2` + `SQLITE_OPEN_FULLMUTEX`
+  - `connect` defaults to a 5-second busy timeout (`*default-busy-timeout*`); pass `:busy-timeout nil` for the old fail-fast behaviour
+  - New: `with-database-lock`, `handle-lock`, `sqlite-threadsafe`
 - Feb 2026 2.1 Input validation hardening for simplified interface ([details](docs/sql-injection-analysis.md))
   - `normalize-name` validates identifiers and converts hyphens to underscores
   - ORDER BY direction allowlisted to `:asc` / `:desc`

@@ -14,7 +14,12 @@
            :connect
            :set-busy-timeout
            :disconnect
-           :with-open-database)
+           :with-open-database
+           :*default-busy-timeout*)
+  ;; Concurrency
+  (:export :handle-lock
+           :with-database-lock
+           :sqlite-threadsafe)
   ;; Statement lifecycle
   (:export :sqlite-statement
            :prepare-statement
@@ -118,25 +123,77 @@
   ((handle :accessor handle)
    (database-path :accessor database-path)
    (cache :accessor cache)
-   (statements :initform nil :accessor sqlite-handle-statements))
-  (:documentation "Encapsulates the connection to a SQLite database. Use connect and disconnect.")
+   (statements :initform nil :accessor sqlite-handle-statements)
+   (lock :reader handle-lock
+         :initform (bt:make-recursive-lock "inquisitio-handle"))
+   (transaction-depth :type fixnum :accessor transaction-depth :initform 0))
+  (:documentation "Encapsulates the connection to a SQLite database. Use connect and disconnect.
+
+Thread safety: a handle MAY be shared between threads. All Lisp-side state
+\(the statement cache and the statement list) is guarded by HANDLE-LOCK, a
+recursive lock, and the connection is opened with SQLITE_OPEN_FULLMUTEX.
+WITH-TRANSACTION holds HANDLE-LOCK for its whole body, so transactions on one
+handle serialize; use one connection per thread if that is too coarse. See
+WITH-DATABASE-LOCK for making a sequence of statements atomic without a
+transaction.")
   (:feature inquisitio-core)
-  (:purpose "Wrap the raw FFI database pointer with Lisp-side state (cache, statement tracking)"))
+  (:purpose "Wrap the raw FFI database pointer with Lisp-side state (cache, statement tracking, lock)"))
 
 (defmethod initialize-instance :after ((object sqlite-handle) &key (database-path ":memory:") &allow-other-keys)
   (cffi:with-foreign-object (ppdb 'inquisitio.ffi:p-sqlite3)
-    (let ((error-code (inquisitio.ffi:sqlite3-open database-path ppdb)))
+    ;; sqlite3_open_v2 rather than sqlite3_open: the flags are how the library
+    ;; states its threading intent instead of inheriting the linked build's
+    ;; default. READWRITE|CREATE reproduces sqlite3_open's own semantics.
+    (let ((error-code (inquisitio.ffi:sqlite3-open-v2
+                       database-path ppdb
+                       (logior inquisitio.ffi:+sqlite-open-readwrite+
+                               inquisitio.ffi:+sqlite-open-create+
+                               inquisitio.ffi:+sqlite-open-fullmutex+)
+                       (cffi:null-pointer))))
       (if (eq error-code :ok)
           (setf (handle object) (cffi:mem-ref ppdb 'inquisitio.ffi:p-sqlite3)
                 (database-path object) database-path)
           (sqlite-error error-code (list "Could not open sqlite3 database ~A" database-path)))))
-  (setf (cache object) (make-instance 'inquisitio.cache:mru-cache :cache-size 16 :destructor #'really-finalize-statement)))
+  ;; The cache shares the handle's lock, so cache eviction (which finalizes a
+  ;; statement, and so touches the statement list) needs no second lock and
+  ;; cannot invert lock order against it.
+  (setf (cache object) (make-instance 'inquisitio.cache:mru-cache
+                                      :cache-size 16
+                                      :lock (handle-lock object)
+                                      :destructor #'really-finalize-statement)))
 
 ;;; Connection management
 
-(telos:defun/i connect (database-path &key busy-timeout)
+(defmacro with-database-lock ((db) &body body)
+  "Run BODY holding DB's handle lock, excluding other threads from the handle.
+The lock is recursive, so nesting is safe, as is calling any inquisitio
+operation on DB from inside BODY. Use this to make a sequence of statements
+atomic with respect to other threads when a transaction is not wanted;
+WITH-TRANSACTION already takes this lock for you."
+  `(bt:with-recursive-lock-held ((handle-lock ,db))
+     ,@body))
+
+(defun sqlite-threadsafe ()
+  "Return the threading mode the linked SQLite library was compiled with:
+ 0 — single-thread: SQLite provides no locking of its own,
+ 1 — serialized: safe for concurrent use of one connection,
+ 2 — multi-thread: safe for one connection per thread.
+Inquisitio's own locking covers its Lisp-side state either way, but sharing a
+handle between threads also needs the linked library to be built serialized."
+  (inquisitio.ffi:sqlite3-threadsafe))
+
+(defparameter *default-busy-timeout* 5000
+  "Milliseconds CONNECT waits on a locked database when :BUSY-TIMEOUT is unsupplied.
+NIL means fail immediately, which is SQLite's own default and almost never what
+a caller wants: any second connection to the same file then gets an instant
+SQLITE_BUSY instead of the retry-with-backoff SQLite offers for free.")
+
+(telos:defun/i connect (database-path &key (busy-timeout *default-busy-timeout*))
   "Connect to the sqlite database at the given DATABASE-PATH. Returns the SQLITE-HANDLE connected to the database. Use DISCONNECT to disconnect.
-Operations will wait for locked databases for up to BUSY-TIMEOUT milliseconds; if BUSY-TIMEOUT is NIL, then operations on locked databases will fail immediately."
+Operations will wait for locked databases for up to BUSY-TIMEOUT milliseconds; if BUSY-TIMEOUT is NIL, then operations on locked databases will fail immediately. BUSY-TIMEOUT defaults to *DEFAULT-BUSY-TIMEOUT*.
+
+The returned handle may be shared between threads — see SQLITE-HANDLE for what
+that does and does not guarantee."
   (:feature inquisitio-core)
   (:purpose "Primary entry point for establishing a database connection")
   (restart-case
@@ -162,15 +219,16 @@ Operations will wait for locked databases for up to BUSY-TIMEOUT milliseconds; i
   "Disconnects the given HANDLE from the database. All further operations on the handle are invalid."
   (:feature inquisitio-core)
   (:purpose "Clean shutdown: purge cache, finalize statements, close FFI handle")
-  (inquisitio.cache:purge-cache (cache handle))
-  (iter (with statements = (copy-list (sqlite-handle-statements handle)))
-        (declare (dynamic-extent statements))
-        (for statement in statements)
-        (really-finalize-statement statement))
-  (let ((error-code (inquisitio.ffi:sqlite3-close (handle handle))))
-    (unless (eq error-code :ok)
-      (sqlite-error error-code "Could not close sqlite3 database." :db-handle handle))
-    (slot-makunbound handle 'handle)))
+  (with-database-lock (handle)
+    (inquisitio.cache:purge-cache (cache handle))
+    (iter (with statements = (copy-list (sqlite-handle-statements handle)))
+          (declare (dynamic-extent statements))
+          (for statement in statements)
+          (really-finalize-statement statement))
+    (let ((error-code (inquisitio.ffi:sqlite3-close (handle handle))))
+      (unless (eq error-code :ok)
+        (sqlite-error error-code "Could not close sqlite3 database." :db-handle handle))
+      (slot-makunbound handle 'handle))))
 
 (defun enable-load-extension (db &optional (onoff t))
   "Enable or disable the loading of extensions.
@@ -268,14 +326,20 @@ Example:
           (clear-statement-bindings statement))
         statement)
       (let ((statement (make-instance 'sqlite-statement :db db :sql sql)))
-        (push statement (sqlite-handle-statements db))
+        (with-database-lock (db)
+          (push statement (sqlite-handle-statements db)))
         statement)))
 
 (defun really-finalize-statement (statement)
-  (setf (sqlite-handle-statements (db statement))
-        (delete statement (sqlite-handle-statements (db statement))))
-  (inquisitio.ffi:sqlite3-finalize (handle statement))
-  (slot-makunbound statement 'handle))
+  (let ((db (db statement)))
+    ;; PUSH and DELETE on the same list from two threads splices out live
+    ;; statements, which then never get finalized and make sqlite3_close
+    ;; return SQLITE_BUSY.
+    (with-database-lock (db)
+      (setf (sqlite-handle-statements db)
+            (delete statement (sqlite-handle-statements db)))
+      (inquisitio.ffi:sqlite3-finalize (handle statement))
+      (slot-makunbound statement 'handle))))
 
 (defun finalize-statement (statement)
   "Finalizes the statement and signals that associated resources may be released.
@@ -629,28 +693,67 @@ See BIND-PARAMETER for the list of supported parameter types."
 ;;; Row ID
 
 (defun last-insert-rowid (db)
-  "Returns the auto-generated ID of the last inserted row on the database connection DB."
+  "Returns the auto-generated ID of the last inserted row on the database connection DB.
+
+This value is connection-global, not per-thread: on a handle shared between
+threads another thread's insert can land between yours and this call. Wrap the
+pair in WITH-DATABASE-LOCK (or WITH-TRANSACTION) when the id matters."
   (inquisitio.ffi:sqlite3-last-insert-rowid (handle db)))
 
 ;;; Transaction support
 
-(defmacro with-transaction (db &body body)
-  "Wraps the BODY inside the transaction."
-  (let ((ok (gensym "TRANSACTION-COMMIT-"))
-        (db-var (gensym "DB-")))
-    `(let (,ok
-           (,db-var ,db))
-       (execute-non-query ,db-var "begin transaction")
-       (unwind-protect
-            (multiple-value-prog1
-                (progn ,@body)
-              (setf ,ok t))
-         (if ,ok
-             (execute-non-query ,db-var "commit transaction")
-             (execute-non-query ,db-var "rollback transaction"))))))
+(defun transaction-savepoint-name (depth)
+  "Name of the SAVEPOINT used for a transaction nested at DEPTH (1 and up)."
+  (format nil "inquisitio_savepoint_~D" depth))
 
-(defmacro with-open-database ((db path &key busy-timeout) &body body)
-  `(let ((,db (connect ,path :busy-timeout ,busy-timeout)))
+(defmacro with-transaction (db &body body)
+  "Wraps the BODY inside a transaction, committing it if BODY returns normally
+and rolling it back if BODY transfers control out non-locally.
+
+Nesting is supported: the outermost form uses BEGIN/COMMIT/ROLLBACK and inner
+forms use SAVEPOINT/RELEASE/ROLLBACK TO, so an inner failure discards only the
+inner scope while an outer failure still discards everything.
+
+Concurrency: BEGIN, COMMIT and ROLLBACK are connection-global in SQLite, so
+this form holds DB's handle lock for the whole of BODY. Transactions on one
+handle therefore serialize, and every other thread's operation on that handle
+waits for the duration. If that is too coarse, give each thread its own
+connection."
+  (let ((ok (gensym "TRANSACTION-COMMIT-"))
+        (db-var (gensym "DB-"))
+        (depth (gensym "DEPTH-"))
+        (savepoint (gensym "SAVEPOINT-")))
+    `(let ((,db-var ,db))
+       (with-database-lock (,db-var)
+         (let* ((,depth (transaction-depth ,db-var))
+                (,savepoint (when (plusp ,depth) (transaction-savepoint-name ,depth)))
+                (,ok nil))
+           (if ,savepoint
+               (execute-non-query ,db-var (format nil "savepoint ~A" ,savepoint))
+               (execute-non-query ,db-var "begin transaction"))
+           (setf (transaction-depth ,db-var) (1+ ,depth))
+           (unwind-protect
+                (multiple-value-prog1
+                    (progn ,@body)
+                  (setf ,ok t))
+             (setf (transaction-depth ,db-var) ,depth)
+             (cond ((and ,ok ,savepoint)
+                    (execute-non-query ,db-var (format nil "release ~A" ,savepoint)))
+                   (,ok
+                    (execute-non-query ,db-var "commit transaction"))
+                   (,savepoint
+                    ;; ROLLBACK TO leaves the savepoint on the stack; RELEASE pops it.
+                    (execute-non-query ,db-var (format nil "rollback to ~A" ,savepoint))
+                    (execute-non-query ,db-var (format nil "release ~A" ,savepoint)))
+                   (t
+                    (execute-non-query ,db-var "rollback transaction")))))))))
+
+(defmacro with-open-database ((db path &key (busy-timeout nil busy-timeout-supplied-p)) &body body)
+  "Connect to PATH, run BODY with the handle bound to DB, and disconnect afterwards.
+BUSY-TIMEOUT is passed to CONNECT only when supplied, so omitting it leaves
+CONNECT's default in force rather than forcing the fail-fast NIL."
+  `(let ((,db (connect ,path ,@(when busy-timeout-supplied-p
+                                 `(:busy-timeout ,busy-timeout)))))
      (unwind-protect
           (progn ,@body)
        (disconnect ,db))))

@@ -5,7 +5,7 @@
   :version "1.0.0"
   :license "MIT"
 
-  :depends-on (:iterate :cffi :telos)
+  :depends-on (:iterate :cffi :telos :bordeaux-threads)
 
   :components ((:file "src/features"
                 :description "Telos feature hierarchy for intent tracking")
