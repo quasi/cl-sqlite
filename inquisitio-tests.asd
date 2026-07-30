@@ -12,4 +12,5 @@
                              (:file "transaction-tests")
                              (:file "thread-safety-tests")
                              (:file "simplified-tests")
-                             (:file "vec-tests")))))
+                             (:file "vec-tests")
+                             (:file "intent-tests")))))

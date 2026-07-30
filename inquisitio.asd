@@ -7,9 +7,7 @@
 
   :depends-on (:iterate :cffi :telos :bordeaux-threads)
 
-  :components ((:file "src/features"
-                :description "Telos feature hierarchy for intent tracking")
-               (:file "src/ffi"
+  :components ((:file "src/ffi"
                 :description "Low-level CFFI bindings to the SQLite3 C API")
                (:file "src/cache"
                 :description "MRU cache for prepared statement reuse")
@@ -21,7 +19,13 @@
                 :depends-on ("src/core"))
                (:file "src/vec"
                 :description "Vector similarity search via sqlite-vec extension"
-                :depends-on ("src/core" "src/simplified")))
+                :depends-on ("src/core" "src/simplified"))
+               ;; Last, not first: the feature names must be interned in the same
+               ;; packages the DEFUN/I members use, and those packages are defined
+               ;; by src/cache and src/core.
+               (:file "src/features"
+                :description "Telos feature hierarchy for intent tracking"
+                :depends-on ("src/cache" "src/core")))
 
   :in-order-to ((test-op (load-op inquisitio-tests))))
 
